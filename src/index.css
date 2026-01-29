@@ -1,0 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Host+Grotesk:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom utility for pausing animation on hover */
+.hover\:pause:hover {
+  animation-play-state: paused;
+}
