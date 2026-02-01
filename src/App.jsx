@@ -11,6 +11,7 @@ import SignUp from './pages/SignUp';
 import Dashboard from './pages/Dashboard';
 import UploadMaterial from './pages/UploadMaterial';
 import MyUploads from './pages/MyUploads';
+import MaterialDetail from './pages/MaterialDetail';
 import NotFound from './pages/NotFound';
 
 // Protected Route Wrapper (Optional but recommended)
@@ -32,6 +33,7 @@ export default function App() {
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/browse" element={<Browse />} />
+          <Route path="/material/:id" element={<MaterialDetail />} />
           <Route path="/login" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
           
@@ -42,7 +44,7 @@ export default function App() {
           <Route path="/upload" element={
             <ProtectedRoute><UploadMaterial /></ProtectedRoute>
           } />
-          <Route path="/uploads" element={
+          <Route path="/my-uploads" element={
             <ProtectedRoute><MyUploads /></ProtectedRoute>
           } />
 

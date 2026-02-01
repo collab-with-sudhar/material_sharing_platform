@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/layouts/Navbar';
+import { X } from 'lucide-react';
 
 const SignUp = () => {
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
@@ -15,46 +16,67 @@ const SignUp = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-[#1a1a1a] flex flex-col">
       <Navbar />
+      
+      {/* Close button - top right */}
+      <Link 
+        to="/" 
+        className="fixed top-8 right-4 md:right-8 z-[2000] text-white hover:text-neon-pink transition-colors"
+      >
+        <X className="w-6 h-6" />
+      </Link>
+
       <div className="flex-1 flex items-center justify-center p-4 pt-24">
         <div className="w-full max-w-md animate-fade-in">
-          <div className="border border-black p-8 bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-            <h1 className="text-3xl font-medium mb-2">Create an account</h1>
-            <p className="text-gray-500 mb-8">Join the community to share and discover materials</p>
+          <div className="p-6 md:p-8">
+            <h1 className="text-4xl md:text-5xl font-semibold text-white mb-3 italic">Sign Up</h1>
+            <p className="text-gray-400 mb-8">Join the community to share and discover materials</p>
             
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium uppercase">Full Name</label>
+                <label className="text-xs font-semibold uppercase tracking-wider text-white">Full Name</label>
                 <input 
-                  type="text" required
-                  className="w-full h-12 px-3 border border-black focus:outline-none focus:ring-2 focus:ring-neon-pink"
+                  type="text" 
+                  required
+                  placeholder="Your name"
+                  className="w-full h-14 px-4 bg-[#2a2a2a] border-0 rounded-none text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-pink transition-all"
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium uppercase">Email</label>
+                <label className="text-xs font-semibold uppercase tracking-wider text-white">Email</label>
                 <input 
-                  type="email" required
-                  className="w-full h-12 px-3 border border-black focus:outline-none focus:ring-2 focus:ring-neon-pink"
+                  type="email" 
+                  required
+                  placeholder="your@email.com"
+                  className="w-full h-14 px-4 bg-[#2a2a2a] border-0 rounded-none text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-pink transition-all"
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium uppercase">Password</label>
+                <label className="text-xs font-semibold uppercase tracking-wider text-white">Password</label>
                 <input 
-                  type="password" required
-                  className="w-full h-12 px-3 border border-black focus:outline-none focus:ring-2 focus:ring-neon-pink"
+                  type="password" 
+                  required
+                  placeholder="••••••••"
+                  className="w-full h-14 px-4 bg-[#2a2a2a] border-0 rounded-none text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-neon-pink transition-all"
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
                 />
               </div>
               
-              <button type="submit" className="w-full h-12 bg-black text-white font-medium uppercase hover:bg-neon-pink hover:text-black transition-colors border border-black mt-2">
+              <button 
+                type="submit" 
+                className="w-full h-14 bg-neon-pink text-black font-semibold uppercase tracking-wider hover:bg-pink-400 transition-colors mt-4"
+              >
                 Create Account
               </button>
             </form>
-            <div className="mt-6 text-center text-sm">
-              Already have an account? <Link to="/login" className="underline font-medium hover:text-neon-pink">Sign in</Link>
+            
+            <div className="mt-8 text-center">
+              <Link to="/login" className="text-neon-pink hover:text-pink-400 transition-colors">
+                Already have an account? Sign in
+              </Link>
             </div>
           </div>
         </div>

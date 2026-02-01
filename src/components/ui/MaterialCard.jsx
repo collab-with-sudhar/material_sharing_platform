@@ -1,11 +1,12 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { FileText, BookOpen, Eye, Download, Calendar } from 'lucide-react';
 
 const MaterialCard = ({ title, subject, type, semester, year, views, downloads, date, href, delay }) => {
   return (
     <div className="animate-fade-in" style={{ animationDelay: delay, animationFillMode: 'both' }}>
-      <a 
-        href={href} 
+      <Link 
+        to={href} 
         className="group block border border-black hover:border-neon-pink transition-colors bg-white"
       >
         {/* Card Header */}
@@ -53,7 +54,7 @@ const MaterialCard = ({ title, subject, type, semester, year, views, downloads, 
             </span>
           </div>
         </div>
-      </a>
+      </Link>
     </div>
   );
 };
