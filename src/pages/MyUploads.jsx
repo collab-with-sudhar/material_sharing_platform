@@ -155,7 +155,7 @@ const MyUploads = () => {
           </div>
         )}
       </main>
-      <Footer />
+      
     </div>
   );
 };

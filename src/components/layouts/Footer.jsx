@@ -8,10 +8,10 @@ const Footer = () => (
         <div className="bg-black text-white h-8 w-8 flex items-center justify-center">
           <BookOpen className="w-4 h-4" />
         </div>
-        <span className="font-medium">StudyShare</span>
+        <span className="font-medium">TCE Materials</span>
       </div>
       <p className="text-sm text-gray-500">
-        Built for students, by students. Share knowledge, ace exams.
+        Built for students, by students.
       </p>
     </div>
   </footer>

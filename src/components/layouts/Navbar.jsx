@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 import NavButton from '../ui/NavButton';
 import { X } from 'lucide-react';
 
@@ -8,10 +8,17 @@ const Navbar = () => {
   const { isAuthenticated, logout } = useAuth();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isActive = (path) => location.pathname === path;
 
   const closeMobileMenu = () => setIsMobileOpen(false);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+    closeMobileMenu();
+  };
 
   return (
     <>
@@ -32,7 +39,7 @@ const Navbar = () => {
             <>
               <NavButton href="/upload" active={isActive('/upload')}>UPLOAD</NavButton>
               <NavButton href="/dashboard" active={isActive('/dashboard')}>DASHBOARD</NavButton>
-              <NavButton onClick={logout}>SIGN OUT</NavButton>
+              <NavButton onClick={handleLogout}>SIGN OUT</NavButton>
             </>
           ) : (
             <>
@@ -98,7 +105,7 @@ const Navbar = () => {
                   DASHBOARD
                 </Link>
                 <button 
-                  onClick={() => { logout(); closeMobileMenu(); }} 
+                  onClick={handleLogout} 
                   className="flex-1 flex items-center justify-center text-lg font-semibold uppercase tracking-wider hover:bg-gray-50 transition-colors"
                 >
                   SIGN OUT

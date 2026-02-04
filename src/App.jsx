@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import { AuthProvider } from './context/AuthContext';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -14,44 +14,71 @@ import MyUploads from './pages/MyUploads';
 import MaterialDetail from './pages/MaterialDetail';
 import NotFound from './pages/NotFound';
 
-// Protected Route Wrapper (Optional but recommended)
-import { useAuth } from './context/AuthContext';
-import { Navigate } from 'react-router-dom';
+// Route Protection Components
+import ProtectedRoute from './components/ProtectedRoute';
+import PublicRoute from './components/PublicRoute';
 
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return children;
-};
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 export default function App() {
   return (
-    <AuthProvider>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <Router>
         <Toaster position="top-right" richColors closeButton />
         <Routes>
-          {/* Public Routes */}
+          {/* Public Routes - Anyone can access */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/browse" element={<Browse />} />
           <Route path="/material/:id" element={<MaterialDetail />} />
-          <Route path="/login" element={<SignIn />} />
-          <Route path="/signup" element={<SignUp />} />
           
-          {/* Protected Routes - These simulate backend auth requirements */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute><Dashboard /></ProtectedRoute>
-          } />
-          <Route path="/upload" element={
-            <ProtectedRoute><UploadMaterial /></ProtectedRoute>
-          } />
-          <Route path="/my-uploads" element={
-            <ProtectedRoute><MyUploads /></ProtectedRoute>
-          } />
+          {/* Auth Routes - Redirect to dashboard if already logged in */}
+          <Route 
+            path="/login" 
+            element={
+              <PublicRoute>
+                <SignIn />
+              </PublicRoute>
+            } 
+          />
+          <Route 
+            path="/signup" 
+            element={
+              <PublicRoute>
+                <SignUp />
+              </PublicRoute>
+            } 
+          />
+          
+          {/* Protected Routes - Require authentication */}
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/upload" 
+            element={
+              <ProtectedRoute>
+                <UploadMaterial />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/my-uploads" 
+            element={
+              <ProtectedRoute>
+                <MyUploads />
+              </ProtectedRoute>
+            } 
+          />
 
-          {/* 404 */}
+          {/* 404 Not Found */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
-    </AuthProvider>
+    </GoogleOAuthProvider>
   );
 }

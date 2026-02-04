@@ -13,7 +13,7 @@ export const NAV_LINKS = [
 
 export const FEATURE_CARDS = [
   { icon: Search, title: "Browse Materials", subtitle: "Find study resources", href: "/browse" },
-  { icon: Upload, title: "Upload Material", subtitle: "Share your notes", href: "/upload" },
+  { icon: Upload, title: "Upload Notes", subtitle: "Share your notes", href: "/upload" },
   { icon: Bookmark, title: "My Dashboard", subtitle: "Saved materials", href: "/dashboard" },
 ];
 

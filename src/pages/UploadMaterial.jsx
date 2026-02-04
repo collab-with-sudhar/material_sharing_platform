@@ -301,7 +301,7 @@ const UploadMaterial = () => {
           </div>
         </div>
       </main>
-      <Footer />
+      
     </div>
   );
 };
