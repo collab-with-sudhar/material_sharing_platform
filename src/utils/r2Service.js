@@ -1,9 +1,9 @@
-const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
-const r2Client = require('../config/r2');
-const path = require('path');
+import { PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import r2Client from '../config/r2.js';
+import path from 'path';
 
 // Upload File
-const uploadFileToR2 = async (file, folder = 'uploads') => {
+export const uploadFileToR2 = async (file, folder = 'uploads') => {
   const fileExtension = path.extname(file.originalname);
   const fileName = `${folder}/${Date.now()}-${Math.round(Math.random() * 1E9)}${fileExtension}`;
 
@@ -12,7 +12,6 @@ const uploadFileToR2 = async (file, folder = 'uploads') => {
     Key: fileName,
     Body: file.buffer,
     ContentType: file.mimetype,
-    // ACL: 'public-read' // Only if your bucket allows ACLs, otherwise manage via R2 settings
   });
 
   await r2Client.send(command);
@@ -24,7 +23,7 @@ const uploadFileToR2 = async (file, folder = 'uploads') => {
 };
 
 // Delete File
-const deleteFileFromR2 = async (fileKey) => {
+export const deleteFileFromR2 = async (fileKey) => {
   const command = new DeleteObjectCommand({
     Bucket: process.env.R2_BUCKET_NAME,
     Key: fileKey,
@@ -32,5 +31,3 @@ const deleteFileFromR2 = async (fileKey) => {
 
   await r2Client.send(command);
 };
-
-module.exports = { uploadFileToR2, deleteFileFromR2 };

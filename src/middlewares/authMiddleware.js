@@ -1,40 +1,35 @@
-const admin = require('../config/firebase');
-const User = require('../models/User');
+import ErrorHandler from "../utils/errorHandler.js";
+import catchAsyncErrors from "./catchAsyncErrors.js";
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 
-const protect = async (req, res, next) => {
-  let token;
+export const isAuthenticatedUser = catchAsyncErrors(async (req, res, next) => {
+  const { token } = req.cookies;
 
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    try {
-      token = req.headers.authorization.split(' ')[1];
-      
-      // 1. Verify Token with Firebase
-      const decodedToken = await admin.auth().verifyIdToken(token);
-      req.userUid = decodedToken.uid;
-      req.userEmail = decodedToken.email;
-
-      // 2. Find or Create User in MongoDB (Sync Logic)
-      // We do this to ensure every authenticated request has a valid DB user attached
-      let user = await User.findOne({ firebaseUID: req.userUid });
-      
-      if (!user) {
-        user = await User.create({
-          firebaseUID: req.userUid,
-          email: req.userEmail,
-          name: decodedToken.name || 'User',
-          profileImageURL: decodedToken.picture || ''
-        });
-      }
-
-      req.user = user; // Attach MongoDB user object to request
-      next();
-    } catch (error) {
-      console.error('Auth Error:', error);
-      res.status(401).json({ message: 'Not authorized, token failed' });
-    }
-  } else {
-    res.status(401).json({ message: 'Not authorized, no token' });
+  if (!token) {
+    return next(new ErrorHandler("Please Login to access this resource", 401));
   }
+
+  const decodedData = jwt.verify(token, process.env.JWT_SECRET);
+
+  req.user = await User.findById(decodedData.id);
+
+  next();
+});
+
+export const authorizeRoles = (...roles) => {
+  return (req, res, next) => {
+    if (!roles.includes(req.user.role)) {
+      return next(
+        new ErrorHandler(
+          `Role: ${req.user.role} is not allowed to access this resource`,
+          403
+        )
+      );
+    }
+    next();
+  };
 };
 
-module.exports = { protect };
+// Legacy protect function for backward compatibility
+export const protect = isAuthenticatedUser;

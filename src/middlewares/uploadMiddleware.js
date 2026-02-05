@@ -1,5 +1,5 @@
-const multer = require('multer');
-const path = require('path');
+import multer from 'multer';
+import path from 'path';
 
 // Store file in memory buffer
 const storage = multer.memoryStorage();
@@ -22,4 +22,4 @@ const upload = multer({
   fileFilter
 });
 
-module.exports = upload;
+export default upload;

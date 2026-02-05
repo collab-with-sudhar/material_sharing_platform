@@ -1,14 +1,15 @@
-const express = require('express');
+import express from 'express';
+import { uploadMaterial, getMaterials, deleteMaterial } from '../controllers/materialController.js';
+import { isAuthenticatedUser, authorizeRoles } from '../middlewares/authMiddleware.js';
+import upload from '../middlewares/uploadMiddleware.js';
+
 const router = express.Router();
-const { uploadMaterial, getMaterials, deleteMaterial } = require('../controllers/materialController');
-const { protect } = require('../middlewares/authMiddleware');
-const upload = require('../middlewares/uploadMiddleware');
 
 router.route('/')
   .get(getMaterials) // Anyone can view
-  .post(protect, upload.single('file'), uploadMaterial); // Only auth users upload
+  .post(isAuthenticatedUser, upload.single('file'), uploadMaterial); // Only auth users upload
 
 router.route('/:id')
-  .delete(protect, deleteMaterial);
+  .delete(isAuthenticatedUser, deleteMaterial);
 
-module.exports = router;
+export default router;

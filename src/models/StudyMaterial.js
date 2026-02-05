@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const studyMaterialSchema = new mongoose.Schema({
   title: { type: String, required: true },
@@ -6,7 +6,7 @@ const studyMaterialSchema = new mongoose.Schema({
   subject: { type: String, required: true, index: true },
   category: { 
     type: String, 
-    enum: ['Notes', 'Question Paper', 'Study Material'], 
+    enum: ['Notes', 'Question Paper', 'Assignment'], 
     required: true,
     index: true 
   },
@@ -15,7 +15,7 @@ const studyMaterialSchema = new mongoose.Schema({
   fileKey: { type: String, required: true }, // Needed to delete from R2
   fileType: { type: String }, // pdf, docx, etc.
   uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  firebaseUID: { type: String, required: true }, // Redundant but useful for quick checks
+  tags: [{ type: String }],
   likes: { type: Number, default: 0 },
   downloads: { type: Number, default: 0 },
 }, { timestamps: true });
@@ -23,4 +23,4 @@ const studyMaterialSchema = new mongoose.Schema({
 // Text index for search functionality
 studyMaterialSchema.index({ title: 'text', description: 'text', subject: 'text' });
 
-module.exports = mongoose.model('StudyMaterial', studyMaterialSchema);
+export default mongoose.model('StudyMaterial', studyMaterialSchema);
