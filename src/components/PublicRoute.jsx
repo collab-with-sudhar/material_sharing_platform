@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../context/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 /**
@@ -9,10 +9,10 @@ import { Loader2 } from 'lucide-react';
  * Prevents authenticated users from accessing login/signup
  */
 const PublicRoute = ({ children }) => {
-  const { isAuthenticated, loading, initialCheckDone } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
 
   // Show loading spinner during initial auth check
-  if (!initialCheckDone || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-neon-pink animate-spin" />

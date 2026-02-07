@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { AuthProvider } from './context/AuthContext';
 
 // Pages
 import LandingPage from './pages/LandingPage';
@@ -23,9 +24,10 @@ const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 export default function App() {
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-      <Router>
-        <Toaster position="top-right" richColors closeButton />
-        <Routes>
+      <AuthProvider>
+        <Router>
+          <Toaster position="top-right" richColors closeButton />
+          <Routes>
           {/* Public Routes - Anyone can access */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/browse" element={<Browse />} />
@@ -79,6 +81,7 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
+      </AuthProvider>
     </GoogleOAuthProvider>
   );
 }

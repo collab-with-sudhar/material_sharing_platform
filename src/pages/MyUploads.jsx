@@ -2,9 +2,11 @@ import React from 'react';
 import Navbar from '../components/layouts/Navbar';
 import Footer from '../components/layouts/Footer';
 import { ArrowLeft, Upload, FileText, Bookmark, Eye, Download, Calendar } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useMyUploads } from '../hooks/useMaterials';
+import { format } from 'date-fns';
 
-const MaterialCard = ({ title, subject, description, category, semester, year, views, downloads, date }) => {
+const MaterialCard = ({ material, onClick }) => {
   const getCategoryStyle = (cat) => {
     switch (cat?.toLowerCase()) {
       case 'question paper':
@@ -20,8 +22,15 @@ const MaterialCard = ({ title, subject, description, category, semester, year, v
     }
   };
 
+  const formattedDate = material.createdAt 
+    ? format(new Date(material.createdAt), 'MMM d, yyyy')
+    : 'N/A';
+
   return (
-    <div className="border border-gray-200 bg-white hover:shadow-md transition-shadow">
+    <div 
+      onClick={onClick}
+      className="border border-gray-200 bg-white hover:shadow-md transition-shadow cursor-pointer"
+    >
       {/* Header */}
       <div className="p-4 pb-3">
         <div className="flex items-start gap-3">
@@ -29,31 +38,31 @@ const MaterialCard = ({ title, subject, description, category, semester, year, v
             <FileText className="w-5 h-5 text-gray-500" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-base truncate">{title}</h3>
+            <h3 className="font-semibold text-base truncate">{material.title}</h3>
             <p className="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
-              <Bookmark className="w-3 h-3" /> {subject}
+              <Bookmark className="w-3 h-3" /> {material.subject}
             </p>
           </div>
         </div>
       </div>
 
       {/* Description */}
-      {description && (
+      {material.description && (
         <div className="px-4 pb-3">
-          <p className="text-sm text-gray-600 line-clamp-2">{description}</p>
+          <p className="text-sm text-gray-600 line-clamp-2">{material.description}</p>
         </div>
       )}
 
       {/* Tags */}
       <div className="px-4 pb-3 flex flex-wrap items-center gap-2">
-        <span className={`px-2 py-0.5 text-[10px] font-semibold uppercase border ${getCategoryStyle(category)}`}>
-          {category}
+        <span className={`px-2 py-0.5 text-[10px] font-semibold uppercase border ${getCategoryStyle(material.category)}`}>
+          {material.category}
         </span>
         <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 border border-gray-200">
-          Sem {semester}
+          Sem {material.semester || 'N/A'}
         </span>
         <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 border border-gray-200">
-          {year}
+          {material.year || new Date().getFullYear()}
         </span>
       </div>
 
@@ -61,14 +70,14 @@ const MaterialCard = ({ title, subject, description, category, semester, year, v
       <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1">
-            <Eye className="w-3.5 h-3.5" /> {views} views
+            <Eye className="w-3.5 h-3.5" /> {material.views || 0}
           </span>
           <span className="flex items-center gap-1">
-            <Download className="w-3.5 h-3.5" /> {downloads} downloads
+            <Download className="w-3.5 h-3.5" /> {material.downloads || 0}
           </span>
         </div>
         <span className="flex items-center gap-1">
-          <Calendar className="w-3.5 h-3.5" /> {date}
+          <Calendar className="w-3.5 h-3.5" /> {formattedDate}
         </span>
       </div>
     </div>
@@ -76,31 +85,12 @@ const MaterialCard = ({ title, subject, description, category, semester, year, v
 };
 
 const MyUploads = () => {
-  // Sample data matching the screenshot
-  const uploads = [
-    { 
-      title: "sudhar_1a", 
-      subject: "mad", 
-      description: "hbwjwb",
-      category: "Question Paper", 
-      semester: "6",
-      year: "2025",
-      views: "0", 
-      downloads: "0",
-      date: "Feb 1"
-    },
-    { 
-      title: "sudhar_1b", 
-      subject: "cloud computing", 
-      description: "wort",
-      category: "Notes", 
-      semester: "5",
-      year: "2026",
-      views: "0", 
-      downloads: "0",
-      date: "Feb 1"
-    },
-  ];
+  const navigate = useNavigate();
+  const { uploads, loading, error } = useMyUploads();
+
+  const handleMaterialClick = (materialId) => {
+    navigate(`/material/${materialId}`);
+  };
 
   return (
     <div className="min-h-screen bg-white font-sans text-black overflow-x-hidden">
@@ -123,7 +113,9 @@ const MyUploads = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 animate-fade-in" style={{ animationDelay: '0.15s', animationFillMode: 'both' }}>
           <div>
             <h1 className="text-4xl md:text-5xl font-semibold">My Uploads</h1>
-            <p className="text-gray-500 mt-2">{uploads.length} materials uploaded</p>
+            <p className="text-gray-500 mt-2">
+              {loading ? 'Loading...' : `${uploads?.length || 0} materials uploaded`}
+            </p>
           </div>
           
           <Link 
@@ -134,15 +126,36 @@ const MyUploads = () => {
           </Link>
         </div>
 
-        {/* Materials Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
-          {uploads.map((upload, idx) => (
-            <MaterialCard key={idx} {...upload} />
-          ))}
-        </div>
+        {/* Loading State */}
+        {loading && (
+          <div className="py-16 text-center animate-fade-in" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
+            <p className="text-gray-500">Loading your uploads...</p>
+          </div>
+        )}
 
-        {/* Empty State (shown when no uploads) */}
-        {uploads.length === 0 && (
+        {/* Error State */}
+        {error && (
+          <div className="py-16 text-center animate-fade-in" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
+            <p className="text-red-500 mb-4">{error}</p>
+          </div>
+        )}
+
+        {/* Materials Grid */}
+        {!loading && !error && uploads && uploads.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
+            {uploads.map((upload) => (
+              <MaterialCard 
+                key={upload._id} 
+                material={upload}
+                onClick={() => handleMaterialClick(upload._id)}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && !error && (!uploads || uploads.length === 0) && (
           <div className="border border-gray-200 py-16 text-center bg-white animate-fade-in" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
             <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" strokeWidth={1} />
             <p className="text-gray-500 mb-4">You haven't uploaded any materials yet</p>

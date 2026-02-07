@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../context/AuthContext';
 import { GoogleLogin } from '@react-oauth/google';
 import Navbar from '../components/layouts/Navbar';
 import { X, Loader2 } from 'lucide-react';
@@ -8,7 +8,7 @@ import { X, Loader2 } from 'lucide-react';
 const SignUp = () => {
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { register, googleLogin, isAuthenticated, loading } = useAuth();
+  const { signup, googleLoginHandler, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
@@ -22,7 +22,7 @@ const SignUp = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const success = await register(formData);
+      const success = await signup(formData);
       if (success) {
         navigate('/dashboard');
       }
@@ -34,10 +34,12 @@ const SignUp = () => {
   const handleGoogleSuccess = async (credentialResponse) => {
     setIsSubmitting(true);
     try {
-      const success = await googleLogin(credentialResponse);
+      const success = await googleLoginHandler(credentialResponse);
       if (success) {
         navigate('/dashboard');
       }
+    } catch (error) {
+      console.error('Google sign up error:', error);
     } finally {
       setIsSubmitting(false);
     }

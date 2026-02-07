@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../context/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 /**
@@ -10,11 +10,11 @@ import { Loader2 } from 'lucide-react';
  * Shows loading state during auth check
  */
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
-  const { isAuthenticated, loading, user, initialCheckDone } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   const location = useLocation();
 
   // Show loading spinner during initial auth check
-  if (!initialCheckDone || loading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#1a1a1a] flex items-center justify-center">
         <div className="text-center">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../context/AuthContext';
 import { GoogleLogin } from '@react-oauth/google';
 import Navbar from '../components/layouts/Navbar';
 import { X, Loader2 } from 'lucide-react';
@@ -9,7 +9,7 @@ const SignIn = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { login, googleLogin, isAuthenticated, loading } = useAuth();
+  const { login, googleLoginHandler, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
@@ -35,10 +35,12 @@ const SignIn = () => {
   const handleGoogleSuccess = async (credentialResponse) => {
     setIsSubmitting(true);
     try {
-      const success = await googleLogin(credentialResponse);
+      const success = await googleLoginHandler(credentialResponse);
       if (success) {
         navigate('/dashboard');
       }
+    } catch (error) {
+      console.error('Google login error:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -131,7 +133,6 @@ const SignIn = () => {
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
                 onError={handleGoogleError}
-                useOneTap
                 theme="filled_black"
                 size="large"
                 text="signin_with"

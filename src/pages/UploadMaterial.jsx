@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/layouts/Navbar';
-import Footer from '../components/layouts/Footer';
-import { UploadCloud, X, FileText, ChevronDown } from 'lucide-react';
+import { UploadCloud, X, FileText, ChevronDown, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { uploadMaterial } from '../api/materialApi';
+import { useAuth } from '../context/AuthContext';
 
 // Custom Dropdown Component with animation
 const CustomSelect = ({ label, required, value, onChange, options, placeholder }) => {
@@ -63,16 +65,27 @@ const CustomSelect = ({ label, required, value, onChange, options, placeholder }
 };
 
 const UploadMaterial = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated, user } = useAuth();
   const [dragActive, setDragActive] = useState(false);
-  const [files, setFiles] = useState([]);
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [formData, setFormData] = useState({
     title: '',
-    materialType: '',
     category: '',
     subject: '',
-    year: '',
-    description: ''
+    semester: '',
+    description: '',
+    tags: ''
   });
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      toast.error('Please sign in to upload materials');
+      navigate('/signin');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -95,30 +108,125 @@ const UploadMaterial = () => {
     e.stopPropagation();
     setDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const newFiles = Array.from(e.dataTransfer.files);
-      setFiles(prev => [...prev, ...newFiles]);
-      toast.success("Files added successfully");
+      const droppedFile = e.dataTransfer.files[0];
+      validateAndSetFile(droppedFile);
     }
   };
 
   const handleChange = (e) => {
     if (e.target.files && e.target.files[0]) {
-      const newFiles = Array.from(e.target.files);
-      setFiles(prev => [...prev, ...newFiles]);
+      const selectedFile = e.target.files[0];
+      validateAndSetFile(selectedFile);
     }
   };
 
-  const removeFile = (index) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (files.length === 0) {
-      toast.error("Please select at least one file to upload");
+  const validateAndSetFile = (selectedFile) => {
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!allowedTypes.includes(selectedFile.type)) {
+      toast.error('Only PDF and Word documents are allowed');
       return;
     }
-    toast.success("Material uploaded successfully!");
+
+    // Validate file size (100MB max)
+    const maxSize = 100 * 1024 * 1024;
+    if (selectedFile.size > maxSize) {
+      toast.error('File size should not exceed 100MB');
+      return;
+    }
+
+    setFile(selectedFile);
+    toast.success('File selected successfully');
+  };
+
+  const removeFile = () => {
+    setFile(null);
+    const fileInput = document.getElementById('file-upload');
+    if (fileInput) fileInput.value = '';
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!file) {
+      toast.error('Please select a file to upload');
+      return;
+    }
+
+    if (!formData.title || !formData.subject || !formData.category || !formData.semester) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setUploading(true);
+    setUploadProgress(10);
+
+    try {
+      // Create FormData
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+      uploadFormData.append('title', formData.title.trim());
+      uploadFormData.append('subject', formData.subject.trim());
+      uploadFormData.append('category', formData.category);
+      uploadFormData.append('semester', formData.semester);
+      
+      if (formData.description) {
+        uploadFormData.append('description', formData.description.trim());
+      }
+      
+      if (formData.tags) {
+        uploadFormData.append('tags', formData.tags);
+      }
+
+      setUploadProgress(30);
+
+      // Upload
+      const response = await uploadMaterial(uploadFormData);
+
+      setUploadProgress(100);
+
+      if (response.success) {
+        toast.success(
+          <div>
+            <p className="font-semibold">Material uploaded successfully!</p>
+            {response.compression?.compressed && (
+              <p className="text-xs mt-1">
+                Compressed from {response.compression.originalSize} to {response.compression.finalSize}
+                ({response.compression.compressionRatio}% reduction)
+              </p>
+            )}
+          </div>
+        );
+
+        // Reset form
+        setFormData({
+          title: '',
+          category: '',
+          subject: '',
+          semester: '',
+          description: '',
+          tags: ''
+        });
+        setFile(null);
+
+        // Navigate to material detail
+        setTimeout(() => {
+          navigate(`/material/${response.material._id}`);
+        }, 1500);
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error(error.message || 'Failed to upload material');
+      setUploadProgress(0);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+    return (bytes / 1024 / 1024).toFixed(2) + ' MB';
   };
 
   return (
@@ -139,46 +247,46 @@ const UploadMaterial = () => {
           {/* Upload Form Card */}
           <div className="bg-white animate-fade-in" style={{ animationDelay: '0.2s', animationFillMode: 'both' }}>
             <form onSubmit={handleSubmit}>
-              
-              {/* Form Fields Container */}
               <div className="space-y-6">
-                
-                {/* Material Type & Category Grid */}
+                {/* Category & Semester Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <CustomSelect
-                    label="Material Type"
-                    required
-                    value={formData.materialType}
-                    onChange={handleInputChange}
-                    placeholder="Select type"
-                    options={[
-                      { value: 'notes', label: 'Notes', name: 'materialType' },
-                      { value: 'question-paper', label: 'Question Paper', name: 'materialType' },
-                      { value: 'lab-manual', label: 'Lab Manual', name: 'materialType' },
-                      { value: 'assignment', label: 'Assignment', name: 'materialType' },
-                      { value: 'reference', label: 'Reference Book', name: 'materialType' },
-                    ]}
-                  />
-                  <CustomSelect
                     label="Category"
+                    required
                     value={formData.category}
                     onChange={handleInputChange}
                     placeholder="Select category"
                     options={[
-                      { value: 'assignments', label: 'Assignments', name: 'category' },
-                      { value: 'handwritten-notes', label: 'Handwritten Notes', name: 'category' },
-                      { value: 'lab-manuals', label: 'Lab Manuals', name: 'category' },
-                      { value: 'other', label: 'Other', name: 'category' },
-                      { value: 'question-papers', label: 'Question Papers', name: 'category' },
-                      { value: 'reference-books', label: 'Reference Books', name: 'category' },
+                      { value: 'Notes', label: 'Notes', name: 'category' },
+                      { value: 'Question Paper', label: 'Question Paper', name: 'category' },
+                      { value: 'Assignment', label: 'Assignment', name: 'category' },
+                    ]}
+                  />
+                  <CustomSelect
+                    label="Semester"
+                    required
+                    value={formData.semester}
+                    onChange={handleInputChange}
+                    placeholder="Select semester"
+                    options={[
+                      { value: 'Semester 1', label: 'Semester 1', name: 'semester' },
+                      { value: 'Semester 2', label: 'Semester 2', name: 'semester' },
+                      { value: 'Semester 3', label: 'Semester 3', name: 'semester' },
+                      { value: 'Semester 4', label: 'Semester 4', name: 'semester' },
+                      { value: 'Semester 5', label: 'Semester 5', name: 'semester' },
+                      { value: 'Semester 6', label: 'Semester 6', name: 'semester' },
+                      { value: 'Semester 7', label: 'Semester 7', name: 'semester' },
+                      { value: 'Semester 8', label: 'Semester 8', name: 'semester' },
                     ]}
                   />
                 </div>
 
-                {/* Subject & Year Grid */}
+                {/* Subject & Tags Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-xs font-medium uppercase tracking-wider text-gray-700">Subject</label>
+                    <label className="text-xs font-medium uppercase tracking-wider text-gray-700">
+                      Subject <span className="text-red-500">*</span>
+                    </label>
                     <input 
                       type="text"
                       name="subject"
@@ -186,16 +294,17 @@ const UploadMaterial = () => {
                       onChange={handleInputChange}
                       placeholder="e.g., Data Structures"
                       className="w-full h-12 px-4 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-100 placeholder:text-gray-400 transition-all bg-white hover:border-gray-300"
+                      required
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs font-medium uppercase tracking-wider text-gray-700">Year</label>
+                    <label className="text-xs font-medium uppercase tracking-wider text-gray-700">Tags</label>
                     <input 
                       type="text"
-                      name="year"
-                      value={formData.year}
+                      name="tags"
+                      value={formData.tags}
                       onChange={handleInputChange}
-                      placeholder="e.g., 2024"
+                      placeholder="e.g., arrays, sorting"
                       className="w-full h-12 px-4 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-100 placeholder:text-gray-400 transition-all bg-white hover:border-gray-300"
                     />
                   </div>
@@ -230,78 +339,112 @@ const UploadMaterial = () => {
                   />
                 </div>
 
-                {/* Drag and Drop Zone */}
+                {/* File Upload */}
                 <div className="space-y-2">
                   <label className="text-xs font-medium uppercase tracking-wider text-gray-700">
                     File Upload <span className="text-red-500">*</span>
                   </label>
                   <div 
                     className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all duration-200 
-                      ${dragActive ? 'bg-blue-50 border-blue-400' : 'bg-gray-50 border-gray-300 hover:bg-gray-100 hover:border-gray-400'}`}
+                      ${dragActive ? 'bg-blue-50 border-blue-400' : 'bg-gray-50 border-gray-300 hover:bg-gray-100 hover:border-gray-400'}
+                      ${uploading ? 'pointer-events-none opacity-50' : ''}`}
                     onDragEnter={handleDrag}
                     onDragLeave={handleDrag}
                     onDragOver={handleDrag}
                     onDrop={handleDrop}
-                    onClick={() => document.getElementById('file-upload').click()}
+                    onClick={() => !uploading && document.getElementById('file-upload').click()}
                   >
                     <input 
                       type="file" 
                       id="file-upload" 
                       className="hidden" 
-                      multiple 
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                      onChange={handleChange} 
+                      accept=".pdf,.doc,.docx"
+                      onChange={handleChange}
+                      disabled={uploading}
                     />
                     <div className="w-14 h-14 bg-white border border-gray-200 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
                       <UploadCloud className="w-6 h-6 text-gray-500" />
                     </div>
                     <p className="font-medium text-sm text-gray-700">Click to upload or drag and drop</p>
-                    <p className="text-xs text-gray-500 mt-2">PDF, DOCX, JPG or PNG (max. 10MB)</p>
+                    <p className="text-xs text-gray-500 mt-2">PDF or DOCX (max. 100MB)</p>
+                    <p className="text-xs text-gray-400 mt-1">Files will be automatically compressed to save space</p>
                   </div>
                 </div>
 
-                {/* File Preview List */}
-                {files.length > 0 && (
+                {/* File Preview */}
+                {file && (
                   <div className="space-y-2">
-                    <label className="text-xs font-medium uppercase tracking-wider text-gray-700">Selected Files</label>
-                    <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 overflow-hidden">
-                      {files.map((file, idx) => (
-                        <div key={idx} className="flex items-center justify-between p-3 bg-white hover:bg-gray-50 transition-colors animate-fade-in">
-                          <div className="flex items-center gap-3 overflow-hidden">
-                            <div className="w-10 h-10 border border-gray-200 rounded-lg flex items-center justify-center bg-gray-50 shrink-0">
-                              <FileText className="w-5 h-5 text-gray-500" />
-                            </div>
-                            <div className="overflow-hidden">
-                              <p className="text-sm font-medium text-gray-700 truncate max-w-[200px] md:max-w-[300px]">{file.name}</p>
-                              <p className="text-xs text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                            </div>
+                    <label className="text-xs font-medium uppercase tracking-wider text-gray-700">Selected File</label>
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="flex items-center justify-between p-3 bg-white hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center gap-3 overflow-hidden flex-1">
+                          <div className="w-10 h-10 border border-gray-200 rounded-lg flex items-center justify-center bg-gray-50 shrink-0">
+                            <FileText className="w-5 h-5 text-gray-500" />
                           </div>
+                          <div className="overflow-hidden flex-1">
+                            <p className="text-sm font-medium text-gray-700 truncate">{file.name}</p>
+                            <p className="text-xs text-gray-500">{formatFileSize(file.size)}</p>
+                          </div>
+                        </div>
+                        {!uploading && (
                           <button 
                             type="button" 
-                            onClick={(e) => { e.stopPropagation(); removeFile(idx); }}
+                            onClick={(e) => { e.stopPropagation(); removeFile(); }}
                             className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
                           >
-                            <X className="w-4 h-4" />
+                            <X size={16} />
                           </button>
-                        </div>
-                      ))}
+                        )}
+                      </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Upload Progress */}
+                {uploading && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Uploading...</span>
+                      <span className="text-gray-600 font-medium">{uploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className="bg-blue-500 h-2 transition-all duration-300 ease-out"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-xs text-gray-500 text-center">
+                      {uploadProgress < 30 ? 'Preparing file...' : 
+                       uploadProgress < 60 ? 'Compressing and uploading...' : 
+                       uploadProgress < 100 ? 'Finalizing...' : 
+                       'Upload complete!'}
+                    </p>
                   </div>
                 )}
 
                 {/* Submit Button */}
                 <button 
                   type="submit" 
-                  className="w-full h-12 bg-black text-white text-sm font-medium uppercase tracking-wide rounded-lg hover:bg-gray-800 transition-colors duration-200"
+                  disabled={uploading || !file}
+                  className="w-full h-12 bg-black text-white text-sm font-medium uppercase tracking-wide rounded-lg hover:bg-gray-800 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Upload Material
+                  {uploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud className="w-4 h-4" />
+                      Upload Material
+                    </>
+                  )}
                 </button>
               </div>
             </form>
           </div>
         </div>
       </main>
-      
     </div>
   );
 };
