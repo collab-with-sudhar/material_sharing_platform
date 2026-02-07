@@ -145,6 +145,43 @@ const UploadMaterial = () => {
     if (fileInput) fileInput.value = '';
   };
 
+  const compressWithMicroservice = async (file, onProgress) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      // We'll simulate progress since fetch doesn't support upload progress natively
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress = Math.min(progress + 5, 90);
+        onProgress(progress);
+      }, 200);
+
+      const COMPRESSION_SERVICE_URL = import.meta.env.VITE_COMPRESSION_SERVICE_URL || 'http://localhost:8000/compress';
+      const response = await fetch(COMPRESSION_SERVICE_URL, {
+        method: 'POST',
+        body: formData,
+      });
+
+      clearInterval(interval);
+
+      if (!response.ok) {
+        throw new Error('Compression service failed');
+      }
+
+      const blob = await response.blob();
+      onProgress(100);
+
+      return new File([blob], file.name, {
+        type: 'application/pdf',
+        lastModified: Date.now(),
+      });
+    } catch (error) {
+      console.error('Microservice compression error:', error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -159,12 +196,45 @@ const UploadMaterial = () => {
     }
 
     setUploading(true);
-    setUploadProgress(10);
+    setUploadProgress(0);
+
+    let fileToUpload = file;
+    let microserviceStats = null;
+
+    // Use Python Microservice for PDF compression
+    if (file.type === 'application/pdf') {
+      try {
+        const handleProgress = (p) => {
+          // Map 0-100 compression progress to 0-50 total progress
+          setUploadProgress(Math.floor(p / 2));
+        };
+
+        toast.info('Compressing file via optimization service...');
+        const compressedFile = await compressWithMicroservice(file, handleProgress);
+
+        if (compressedFile.size < file.size) {
+          microserviceStats = {
+            originalSize: formatFileSize(file.size),
+            finalSize: formatFileSize(compressedFile.size),
+            compressionRatio: Math.round((1 - compressedFile.size / file.size) * 100)
+          };
+          fileToUpload = compressedFile;
+          toast.success(`Compressed: ${microserviceStats.originalSize} -> ${microserviceStats.finalSize}`);
+        } else {
+          toast.info('File already optimized, uploading original.');
+        }
+      } catch (error) {
+        console.error('Compression failed:', error);
+        toast.warning('Compression service unavailable, uploading original file.');
+      }
+    }
+
+    setUploadProgress(50);
 
     try {
       // Create FormData
       const uploadFormData = new FormData();
-      uploadFormData.append('file', file);
+      uploadFormData.append('file', fileToUpload);
       uploadFormData.append('title', formData.title.trim());
       uploadFormData.append('subject', formData.subject.trim());
       uploadFormData.append('category', formData.category);
@@ -189,10 +259,10 @@ const UploadMaterial = () => {
         toast.success(
           <div>
             <p className="font-semibold">Material uploaded successfully!</p>
-            {response.compression?.compressed && (
+            {(microserviceStats || response.compression?.compressed) && (
               <p className="text-xs mt-1">
-                Compressed from {response.compression.originalSize} to {response.compression.finalSize}
-                ({response.compression.compressionRatio}% reduction)
+                Compressed from {microserviceStats ? microserviceStats.originalSize : response.compression?.originalSize} to {microserviceStats ? microserviceStats.finalSize : response.compression?.finalSize}
+                ({microserviceStats ? microserviceStats.compressionRatio : response.compression?.compressionRatio}% reduction)
               </p>
             )}
           </div>
