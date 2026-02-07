@@ -17,7 +17,7 @@ export const uploadFileToR2 = async (file, folder = 'uploads') => {
   await r2Client.send(command);
 
   return {
-    fileURL: `${process.env.R2_PUBLIC_DOMAIN}/${fileName}`,
+    fileURL: `${process.env.R2_PUBLIC_URL}/${fileName}`,
     fileKey: fileName
   };
 };

@@ -36,6 +36,10 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  savedMaterials: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'StudyMaterial'
+  }],
   authProviders: {
     type: [String],
     enum: ["email_password", "google"],

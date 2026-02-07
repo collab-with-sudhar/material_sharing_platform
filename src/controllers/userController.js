@@ -141,7 +141,14 @@ export const logout = catchAsyncErrors(async (req, res, next) => {
 
 // Get User Profile
 export const getProfile = catchAsyncErrors(async (req, res, next) => {
-  const user = await User.findById(req.user.id);
+  const user = await User.findById(req.user.id).populate({
+    path: 'savedMaterials',
+    select: 'title subject category semester fileType views downloads createdAt',
+    populate: {
+      path: 'uploadedBy',
+      select: 'name profileImageURL'
+    }
+  });
 
   res.status(200).json({
     success: true,

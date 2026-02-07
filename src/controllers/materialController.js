@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import { uploadFileToR2, deleteFileFromR2 } from '../utils/r2Service.js';
 import ErrorHandler from '../utils/errorHandler.js';
 import catchAsyncErrors from '../middlewares/catchAsyncErrors.js';
+import { compressFile, formatFileSize } from '../utils/compression.js';
 
 // @desc    Upload new material
 // @route   POST /api/materials
@@ -12,19 +13,54 @@ export const uploadMaterial = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler('No file uploaded', 400));
   }
 
-  const { title, description, subject, category, classInfo, tags } = req.body;
+  const { title, description, subject, category, semester, tags } = req.body;
+
+  // Validation
+  if (!title || !subject || !category || !semester) {
+    return next(new ErrorHandler('Please provide all required fields: title, subject, category, semester', 400));
+  }
+
+  // Validate file type (only PDFs and documents)
+  const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+  if (!allowedTypes.includes(req.file.mimetype)) {
+    return next(new ErrorHandler('Only PDF and Word documents are allowed', 400));
+  }
+
+  // Validate file size (max 100MB before compression)
+  const maxSize = 100 * 1024 * 1024; // 100MB
+  if (req.file.size > maxSize) {
+    return next(new ErrorHandler('File size should not exceed 100MB', 400));
+  }
+
+  const originalSize = req.file.size;
+  console.log(`Processing upload: ${req.file.originalname}`);
+  console.log(`Original size: ${formatFileSize(originalSize)}`);
+
+  // Compress the file
+  const compressionResult = await compressFile(req.file.buffer, req.file.mimetype);
+  
+  // Update file buffer with compressed version
+  req.file.buffer = compressionResult.buffer;
+
+  // Log compression details
+  if (compressionResult.compressed) {
+    console.log(`✓ Compressed from ${formatFileSize(compressionResult.originalSize)} to ${formatFileSize(compressionResult.compressedSize)}`);
+    console.log(`✓ Compression ratio: ${compressionResult.compressionRatio}%`);
+  } else {
+    console.log(`ℹ ${compressionResult.message || 'No compression applied'}`);
+  }
 
   // 1. Upload to R2
   const { fileURL, fileKey } = await uploadFileToR2(req.file, 'study-materials');
 
   // 2. Create DB Entry
   const material = await StudyMaterial.create({
-    title,
-    description,
-    subject,
+    title: title.trim(),
+    description: description ? description.trim() : '',
+    subject: subject.trim(),
     category,
-    classInfo,
-    tags: tags ? tags.split(',') : [], // Assume comma-separated string from frontend
+    semester,
+    tags: tags ? tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
     fileURL,
     fileKey,
     fileType: req.file.mimetype,
@@ -36,7 +72,14 @@ export const uploadMaterial = catchAsyncErrors(async (req, res, next) => {
 
   res.status(201).json({
     success: true,
+    message: 'Material uploaded successfully',
     material,
+    compression: {
+      originalSize: formatFileSize(originalSize),
+      finalSize: formatFileSize(compressionResult.compressedSize),
+      compressionRatio: compressionResult.compressionRatio || 0,
+      compressed: compressionResult.compressed || false,
+    },
   });
 });
 
@@ -45,7 +88,7 @@ export const uploadMaterial = catchAsyncErrors(async (req, res, next) => {
 // @access  Public (or Private)
 export const getMaterials = catchAsyncErrors(async (req, res, next) => {
   const { 
-    category, subject, classInfo, search, 
+    category, subject, semester, search, 
     page = 1, limit = 10, uploader 
   } = req.query;
 
@@ -54,7 +97,7 @@ export const getMaterials = catchAsyncErrors(async (req, res, next) => {
   // Filters
   if (category) query.category = category;
   if (subject) query.subject = subject;
-  if (classInfo) query.classInfo = classInfo;
+  if (semester) query.semester = semester;
   
   // Search (Title or Description)
   if (search) {
@@ -87,6 +130,164 @@ export const getMaterials = catchAsyncErrors(async (req, res, next) => {
   });
 });
 
+// @desc    Get single material by ID
+// @route   GET /api/materials/:id
+// @access  Public
+export const getMaterialById = catchAsyncErrors(async (req, res, next) => {
+  const material = await StudyMaterial.findById(req.params.id)
+    .populate('uploadedBy', 'name profileImageURL email totalUploads semester');
+
+  if (!material) {
+    return next(new ErrorHandler('Material not found', 404));
+  }
+
+  // Increment view count
+  material.views = (material.views || 0) + 1;
+  await material.save();
+
+  res.status(200).json({
+    success: true,
+    material,
+  });
+});
+
+// @desc    Update material
+// @route   PUT /api/materials/:id
+// @access  Private (Owner only)
+export const updateMaterial = catchAsyncErrors(async (req, res, next) => {
+  let material = await StudyMaterial.findById(req.params.id);
+
+  if (!material) {
+    return next(new ErrorHandler('Material not found', 404));
+  }
+
+  // Check ownership
+  if (material.uploadedBy.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+    return next(new ErrorHandler('Not authorized to update this material', 403));
+  }
+
+  const { title, description, subject, category, semester, tags } = req.body;
+
+  const updateData = {};
+  if (title) updateData.title = title.trim();
+  if (description !== undefined) updateData.description = description.trim();
+  if (subject) updateData.subject = subject.trim();
+  if (category) updateData.category = category;
+  if (semester) updateData.semester = semester;
+  if (tags) updateData.tags = tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+
+  material = await StudyMaterial.findByIdAndUpdate(
+    req.params.id,
+    updateData,
+    { new: true, runValidators: true }
+  ).populate('uploadedBy', 'name profileImageURL');
+
+  res.status(200).json({
+    success: true,
+    message: 'Material updated successfully',
+    material,
+  });
+});
+
+// @desc    Track material download
+// @route   POST /api/materials/:id/download
+// @access  Public
+export const trackDownload = catchAsyncErrors(async (req, res, next) => {
+  const material = await StudyMaterial.findById(req.params.id);
+
+  if (!material) {
+    return next(new ErrorHandler('Material not found', 404));
+  }
+
+  // Increment download count
+  material.downloads = (material.downloads || 0) + 1;
+  await material.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Download tracked',
+  });
+});
+
+// @desc    Save/Unsave material
+// @route   POST /api/materials/:id/save
+// @access  Private
+export const toggleSaveMaterial = catchAsyncErrors(async (req, res, next) => {
+  const material = await StudyMaterial.findById(req.params.id);
+
+  if (!material) {
+    return next(new ErrorHandler('Material not found', 404));
+  }
+
+  const user = await User.findById(req.user._id);
+  
+  const isSaved = user.savedMaterials.includes(req.params.id);
+
+  if (isSaved) {
+    // Unsave
+    user.savedMaterials = user.savedMaterials.filter(
+      id => id.toString() !== req.params.id
+    );
+    material.savedBy = material.savedBy.filter(
+      id => id.toString() !== req.user._id.toString()
+    );
+    await user.save();
+    await material.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Material removed from saved collection',
+      isSaved: false,
+    });
+  } else {
+    // Save
+    user.savedMaterials.push(req.params.id);
+    if (!material.savedBy) material.savedBy = [];
+    material.savedBy.push(req.user._id);
+    await user.save();
+    await material.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Material saved to your collection',
+      isSaved: true,
+    });
+  }
+});
+
+// @desc    Get saved materials for logged-in user
+// @route   GET /api/materials/saved
+// @access  Private
+export const getSavedMaterials = catchAsyncErrors(async (req, res, next) => {
+  const user = await User.findById(req.user._id).populate({
+    path: 'savedMaterials',
+    populate: {
+      path: 'uploadedBy',
+      select: 'name profileImageURL'
+    }
+  });
+
+  res.status(200).json({
+    success: true,
+    materials: user.savedMaterials || [],
+  });
+});
+
+// @desc    Get user's uploaded materials
+// @route   GET /api/materials/my-uploads
+// @access  Private
+export const getMyUploads = catchAsyncErrors(async (req, res, next) => {
+  const materials = await StudyMaterial.find({ uploadedBy: req.user._id })
+    .populate('uploadedBy', 'name profileImageURL')
+    .sort({ createdAt: -1 });
+
+  res.status(200).json({
+    success: true,
+    materials,
+    totalUploads: materials.length,
+  });
+});
+
 // @desc    Delete material
 // @route   DELETE /api/materials/:id
 // @access  Private (Owner only)
@@ -105,14 +306,20 @@ export const deleteMaterial = catchAsyncErrors(async (req, res, next) => {
   // 1. Delete from R2
   await deleteFileFromR2(material.fileKey);
 
-  // 2. Delete from DB
+  // 2. Remove from all users' saved materials
+  await User.updateMany(
+    { savedMaterials: req.params.id },
+    { $pull: { savedMaterials: req.params.id } }
+  );
+
+  // 3. Delete from DB
   await material.deleteOne();
 
-  // 3. Decrement stats
-  await User.findByIdAndUpdate(req.user._id, { $inc: { totalUploads: -1 } });
+  // 4. Decrement stats
+  await User.findByIdAndUpdate(material.uploadedBy, { $inc: { totalUploads: -1 } });
 
   res.status(200).json({
     success: true,
-    message: 'Material removed',
+    message: 'Material removed successfully',
   });
 });
