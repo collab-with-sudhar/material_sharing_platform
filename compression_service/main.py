@@ -87,9 +87,15 @@ def compress_pdf_document(file_content: bytes) -> tuple[bytes, int, int]:
                     print(f"Failed to process image {xref}: {e}")
                     continue
 
-        # Save with garbage collection and deflation
+        # Save with garbage collection, deflation, and linearization (fast web view)
         out_buffer = io.BytesIO()
-        doc.ez_save(out_buffer)
+        doc.save(
+            out_buffer,
+            garbage=4,
+            deflate=True,
+            clean=True,
+            linear=True
+        )
 
         compressed_bytes = out_buffer.getvalue()
         compressed_size = len(compressed_bytes)
