@@ -24,10 +24,12 @@ const Navbar = () => {
     <>
       <nav className="fixed top-8 left-4 md:left-8 z-[2000] flex items-center gap-0">
         {/* Logo Icon */}
-        <Link to="/" className="bg-black text-white h-[34px] w-[34px] border border-black flex items-center justify-center hover:bg-neon-pink transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path>
-          </svg>
+        <Link to="/" className="bg-black h-[34px] w-[34px] border border-black flex items-center justify-center hover:bg-neon-pink transition-colors overflow-hidden rounded-md">
+          <img 
+            src="/logo.png" 
+            alt="TCE Materials Logo" 
+            className="w-full h-full object-cover"
+          />
         </Link>
         
         {/* Desktop Menu */}

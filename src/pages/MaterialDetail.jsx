@@ -193,23 +193,37 @@ const MaterialDetail = () => {
                 </div>
               </div>
 
-              {/* PDF Viewer */}
+              {/* Document Viewer */}
               <div 
                 className="animate-fade-in" 
                 style={{ animationDelay: '0.3s', animationFillMode: 'both' }}
               >
                 <div className="border border-black">
                   <div className="relative bg-gray-100" style={{ height: '70vh' }}>
-                    <iframe 
-                      src={`${material.fileURL}#toolbar=0`}
-                      className="w-full h-full"
-                      title="PDF Viewer"
-                    />
+                    {material.fileType === 'application/pdf' ? (
+                      <iframe 
+                        src={`${material.fileURL}#toolbar=0`}
+                        className="w-full h-full"
+                        title="PDF Viewer"
+                      />
+                    ) : (
+                      <iframe 
+                        src={`https://docs.google.com/viewer?url=${encodeURIComponent(material.fileURL)}&embedded=true`}
+                        className="w-full h-full"
+                        title="Document Viewer"
+                        sandbox="allow-scripts allow-same-origin allow-popups"
+                      />
+                    )}
                   </div>
                   <div className="p-4 border-t border-black flex items-center justify-between bg-white">
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                       <FileText className="w-4 h-4" />
-                      <span>{material.fileType === 'application/pdf' ? 'PDF Document' : 'Document'}</span>
+                      <span>
+                        {material.fileType === 'application/pdf' ? 'PDF Document' : 
+                         material.fileType?.includes('word') || material.fileType?.includes('document') ? 'Word Document' :
+                         material.fileType?.includes('presentation') || material.fileType?.includes('powerpoint') ? 'PowerPoint Presentation' :
+                         'Document'}
+                      </span>
                     </div>
                     <a 
                       href={material.fileURL}

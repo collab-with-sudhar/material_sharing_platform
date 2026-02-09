@@ -132,11 +132,19 @@ const UploadMaterial = () => {
     const allowedTypes = [
       'application/pdf', 
       'application/msword', 
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation'
     ];
     
-    if (!allowedTypes.includes(selectedFile.type)) {
-      toast.error('Only PDF and Word documents are allowed');
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.ppt', '.pptx'];
+    const fileExtension = selectedFile.name.toLowerCase().substring(selectedFile.name.lastIndexOf('.'));
+    
+    const isValidType = allowedTypes.includes(selectedFile.type);
+    const isValidExtension = allowedExtensions.includes(fileExtension);
+    
+    if (!isValidType && !isValidExtension) {
+      toast.error('Only PDF, Word, and PowerPoint documents are allowed');
       return;
     }
 
@@ -246,7 +254,7 @@ const UploadMaterial = () => {
 
     // Show info for PDF files that compression will happen server-side
     if (file.type === 'application/pdf') {
-      toast.info('Uploading PDF (compression will be done server-side)...');
+      toast.info('Uploading PDF....');
     }
 
     try {
@@ -326,7 +334,7 @@ const UploadMaterial = () => {
       } else if (error.message.includes('exceed') || error.message.includes('large')) {
         errorMessage = 'File is too large. Maximum size is 100MB.';
       } else if (error.message.includes('format') || error.message.includes('type')) {
-        errorMessage = 'Invalid file format. Only PDF and Word documents are allowed.';
+        errorMessage = 'Invalid file format. Only PDF, Word, and PowerPoint documents are allowed.';
       } else if (error.message) {
         errorMessage = error.message;
       }
@@ -500,7 +508,7 @@ const UploadMaterial = () => {
                       type="file" 
                       id="file-upload" 
                       className="hidden" 
-                      accept=".pdf,.doc,.docx"
+                      accept=".pdf,.doc,.docx,.ppt,.pptx"
                       onChange={handleChange}
                       disabled={uploading}
                     />
@@ -508,8 +516,8 @@ const UploadMaterial = () => {
                       <UploadCloud className="w-6 h-6 text-gray-500" />
                     </div>
                     <p className="font-medium text-sm text-gray-700">Click to upload or drag and drop</p>
-                    <p className="text-xs text-gray-500 mt-2">PDF or DOCX (max. 100MB)</p>
-                    <p className="text-xs text-gray-400 mt-1">PDFs will be automatically compressed on the server</p>
+                    <p className="text-xs text-gray-500 mt-2">PDF, DOCX, or PPTX (max. 100MB)</p>
+                    <p className="text-xs text-gray-400 mt-1">Compress the PDF before upload if the size is larger than 100MB</p>
                   </div>
                 </div>
 

@@ -46,6 +46,10 @@ export const AuthProvider = ({ children }) => {
       if (response.success) {
         setIsAuthenticated(true);
         await checkAuth(); // Fetch full user details
+        
+        // Clear generic department key (if exists from guest browsing)
+        sessionStorage.removeItem('selectedDepartment');
+        
         toast.success('Successfully signed in!');
         return true;
       }
@@ -64,16 +68,41 @@ export const AuthProvider = ({ children }) => {
         return false;
       }
 
-      const response = await authApi.googleLogin(credentialResponse.credential);
+      // Decode JWT credential from Google
+      const base64Url = credentialResponse.credential.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+
+      const userData = JSON.parse(jsonPayload);
+      
+      // Extract user information from decoded token
+      const googleUserData = {
+        email: userData.email,
+        name: userData.name,
+        picture: userData.picture,
+        googleId: userData.sub,
+      };
+
+      const response = await authApi.googleLogin(googleUserData);
       if (response.success) {
         setIsAuthenticated(true);
         await checkAuth(); // Fetch full user details
+        
+        // Clear generic department key (if exists from guest browsing)
+        sessionStorage.removeItem('selectedDepartment');
+        
         toast.success('Google login successful!');
         return true;
       }
       toast.error('Google login failed');
       return false;
     } catch (error) {
+      console.error('Google login error:', error);
       toast.error(error.message || 'Google login failed');
       return false;
     }
@@ -97,6 +126,14 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await authApi.logoutUser();
+      
+      // Clear all department preferences on logout
+      Object.keys(sessionStorage).forEach(key => {
+        if (key.startsWith('selectedDepartment')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+      
       setIsAuthenticated(false);
       setUser(null);
       toast.info('Signed out successfully');

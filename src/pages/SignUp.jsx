@@ -74,7 +74,7 @@ const SignUp = () => {
         <div className="w-full max-w-md animate-fade-in">
           <div className="p-6 md:p-8">
             <h1 className="text-4xl md:text-5xl font-semibold text-white mb-3 italic">Sign Up</h1>
-            <p className="text-gray-400 mb-8">Join the community to share and discover materials</p>
+            <p className="text-gray-400 mb-8">Join to upload materials and help your fellow mates</p>
             
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
