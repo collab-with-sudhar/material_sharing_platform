@@ -4,8 +4,10 @@ import path from 'path';
 
 // Upload File
 export const uploadFileToR2 = async (file, folder = 'uploads') => {
-  const fileExtension = path.extname(file.originalname);
-  const fileName = `${folder}/${Date.now()}-${Math.round(Math.random() * 1E9)}${fileExtension}`;
+  const originalName = path.basename(file.originalname).replace(/[/\\]/g, '');
+  const parsedName = path.parse(originalName);
+  const randomSuffix = Math.random().toString(36).slice(2, 8);
+  const fileName = `${folder}/${parsedName.name}-${randomSuffix}${parsedName.ext}`;
 
   const command = new PutObjectCommand({
     Bucket: process.env.R2_BUCKET_NAME,

@@ -3,7 +3,7 @@ import User from '../models/User.js';
 import { uploadFileToR2, deleteFileFromR2 } from '../utils/r2Service.js';
 import ErrorHandler from '../utils/errorHandler.js';
 import catchAsyncErrors from '../middlewares/catchAsyncErrors.js';
-import { compressFile, formatFileSize } from '../utils/compression.js';
+import { compressFile, formatFileSize } from '../utils/pdfCompression.js';
 
 // @desc    Upload new material
 // @route   POST /api/materials
@@ -13,41 +13,97 @@ export const uploadMaterial = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler('No file uploaded', 400));
   }
 
-  const { title, description, subject, category, semester, tags } = req.body;
+  const { title, description, subject, category, semester, department, tags } = req.body;
 
   // Validation
-  if (!title || !subject || !category || !semester) {
-    return next(new ErrorHandler('Please provide all required fields: title, subject, category, semester', 400));
+  if (!title || !subject || !category || !semester || !department) {
+    return next(new ErrorHandler('Please provide all required fields: title, subject, category, semester, department', 400));
   }
 
-  // Validate file type (only PDFs and documents)
-  const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-  if (!allowedTypes.includes(req.file.mimetype)) {
-    return next(new ErrorHandler('Only PDF and Word documents are allowed', 400));
+  // Validate file type (only PDFs, Word, and PowerPoint documents)
+  const allowedTypes = [
+    'application/pdf', 
+    'application/msword', 
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+  ];
+  
+  // Also check file extension as fallback
+  const allowedExtensions = ['.pdf', '.doc', '.docx', '.ppt', '.pptx'];
+  const fileExtension = req.file.originalname.toLowerCase().substring(req.file.originalname.lastIndexOf('.'));
+  
+  const isValidType = allowedTypes.includes(req.file.mimetype);
+  const isValidExtension = allowedExtensions.includes(fileExtension);
+  
+  if (!isValidType && !isValidExtension) {
+    return next(new ErrorHandler('Only PDF, Word, and PowerPoint documents are allowed', 400));
   }
 
-  // Validate file size (max 100MB before compression)
+  // Validate file size (max 100MB)
   const maxSize = 100 * 1024 * 1024; // 100MB
   if (req.file.size > maxSize) {
     return next(new ErrorHandler('File size should not exceed 100MB', 400));
   }
 
   const originalSize = req.file.size;
-  console.log(`Processing upload: ${req.file.originalname}`);
-  console.log(`Original size: ${formatFileSize(originalSize)}`);
+  console.log(`[Upload] Processing: ${req.file.originalname} (${formatFileSize(originalSize)})`);
 
-  // Compress the file
-  const compressionResult = await compressFile(req.file.buffer, req.file.mimetype);
-  
-  // Update file buffer with compressed version
-  req.file.buffer = compressionResult.buffer;
+  // Compress PDF files if > 10 MB
+  let compressionResult = {
+    buffer: req.file.buffer,
+    originalSize,
+    compressedSize: originalSize,
+    compressionRatio: 0,
+    compressed: false
+  };
 
-  // Log compression details
-  if (compressionResult.compressed) {
-    console.log(`✓ Compressed from ${formatFileSize(compressionResult.originalSize)} to ${formatFileSize(compressionResult.compressedSize)}`);
-    console.log(`✓ Compression ratio: ${compressionResult.compressionRatio}%`);
+  if (req.file.mimetype === 'application/pdf') {
+    try {
+      console.log('[Upload] Initiating PDF compression...');
+      compressionResult = await compressFile(
+        req.file.buffer, 
+        req.file.mimetype, 
+        req.file.originalname
+      );
+      
+      if (!compressionResult || !compressionResult.buffer) {
+        console.error('[Upload] Compression returned invalid result, using original file');
+        compressionResult = {
+          buffer: req.file.buffer,
+          originalSize,
+          compressedSize: originalSize,
+          compressionRatio: 0,
+          compressed: false,
+          error: 'Invalid compression result'
+        };
+      } else {
+        // Update file buffer with compressed version
+        req.file.buffer = compressionResult.buffer;
+        
+        if (compressionResult.compressed) {
+          console.log(`[Upload] ✓ Compressed: ${formatFileSize(compressionResult.originalSize)} → ${formatFileSize(compressionResult.compressedSize)} (${compressionResult.compressionRatio}% reduction)`);
+        } else if (compressionResult.error) {
+          console.log(`[Upload] ⚠ Compression failed: ${compressionResult.error}, using original file`);
+        } else {
+          console.log(`[Upload] ℹ ${compressionResult.message || 'No compression applied'}`);
+        }
+      }
+    } catch (error) {
+      console.error('[Upload] Compression error:', error.message);
+      console.error('[Upload] Stack:', error.stack);
+      // Continue with original file if compression throws unexpected error
+      compressionResult = {
+        buffer: req.file.buffer,
+        originalSize,
+        compressedSize: originalSize,
+        compressionRatio: 0,
+        compressed: false,
+        error: error.message
+      };
+    }
   } else {
-    console.log(`ℹ ${compressionResult.message || 'No compression applied'}`);
+    console.log(`[Upload] Skipping compression for ${req.file.mimetype}`);
   }
 
   // 1. Upload to R2
@@ -60,6 +116,7 @@ export const uploadMaterial = catchAsyncErrors(async (req, res, next) => {
     subject: subject.trim(),
     category,
     semester,
+    department,
     tags: tags ? tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
     fileURL,
     fileKey,
@@ -98,6 +155,7 @@ export const getMaterials = catchAsyncErrors(async (req, res, next) => {
   if (category) query.category = category;
   if (subject) query.subject = subject;
   if (semester) query.semester = semester;
+  if (req.query.department) query.department = req.query.department;
   
   // Search (Title or Description)
   if (search) {
@@ -166,7 +224,7 @@ export const updateMaterial = catchAsyncErrors(async (req, res, next) => {
     return next(new ErrorHandler('Not authorized to update this material', 403));
   }
 
-  const { title, description, subject, category, semester, tags } = req.body;
+  const { title, description, subject, category, semester, department, tags } = req.body;
 
   const updateData = {};
   if (title) updateData.title = title.trim();
@@ -174,6 +232,7 @@ export const updateMaterial = catchAsyncErrors(async (req, res, next) => {
   if (subject) updateData.subject = subject.trim();
   if (category) updateData.category = category;
   if (semester) updateData.semester = semester;
+  if (department) updateData.department = department;
   if (tags) updateData.tags = tags.split(',').map(tag => tag.trim()).filter(tag => tag);
 
   material = await StudyMaterial.findByIdAndUpdate(

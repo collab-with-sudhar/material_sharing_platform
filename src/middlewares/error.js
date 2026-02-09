@@ -34,6 +34,12 @@ export default (err, req, res, next) => {
     err = new ErrorHandler(message, 400);
   }
 
+  // Multer file size error
+  if (err.code === "LIMIT_FILE_SIZE") {
+    const message = "File is too large. Upload less than 100MB.";
+    err = new ErrorHandler(message, 400);
+  }
+
   res.status(err.statusCode).json({
     success: false,
     message: err.message,

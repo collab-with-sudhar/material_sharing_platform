@@ -9,16 +9,17 @@ const fileFilter = (req, file, cb) => {
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const mimetype = allowedTypes.test(file.mimetype);
 
-  if (extname && mimetype) {
+  // Accept if either extension OR mimetype matches (OR logic)
+  if (extname || mimetype) {
     return cb(null, true);
   } else {
-    cb(new Error('Only images and documents are allowed!'));
+    cb(new Error('Only PDF, Word, PowerPoint, and image files are allowed!'));
   }
 };
 
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
   fileFilter
 });
 

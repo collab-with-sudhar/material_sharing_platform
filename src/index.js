@@ -31,21 +31,56 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
-// Configure helmet to allow Google Sign-In
+// Configure helmet for security while allowing Google OAuth
 app.use(helmet({
-  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginOpenerPolicy: false, // Disable COOP to allow Google OAuth popup
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://accounts.google.com", "'unsafe-inline'"],
+      styleSrc: ["'self'", "https://accounts.google.com", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      connectSrc: ["'self'", "https://accounts.google.com"],
+      frameSrc: ["'self'", "https://accounts.google.com"],
+      fontSrc: ["'self'", "data:"],
+    },
+  },
 }));
 
 // Routes
 import materialRoutes from './routes/materialRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import { checkCompressionHealth, getCompressionStats } from './utils/compressionHealthCheck.js';
+import { cleanupOldTempFiles } from './utils/pdfCompression.js';
 
 app.use('/api/materials', materialRoutes);
 app.use('/api/users', userRoutes);
 
+// Health check endpoint
+app.get('/api/health', async (req, res) => {
+  const compressionHealth = await checkCompressionHealth();
+  const compressionStats = getCompressionStats();
+  
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    services: {
+      database: 'connected',
+      compression: compressionHealth
+    },
+    compressionStats
+  });
+});
+
 // Root
 app.get('/', (req, res) => res.send('Study App Backend API Running'));
+
+// Periodic cleanup of old temp files (every 30 minutes)
+setInterval(() => {
+  console.log('[Cleanup] Running scheduled cleanup...');
+  cleanupOldTempFiles();
+}, 30 * 60 * 1000);
 
 // Error Middleware
 app.use(errorMiddleware);

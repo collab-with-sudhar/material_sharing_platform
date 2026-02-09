@@ -6,6 +6,12 @@ const studyMaterialSchema = new mongoose.Schema({
   description: { type: String },
   subject: { type: String, required: true, index: true },
   semester:{type: String, required: true},
+  department: {
+    type: String,
+    enum: ['IT', 'CSE', 'EEE', 'ECE', 'CIVIL', 'MECH', 'CSBS', 'ARCH', 'DATA SCIENCE', 'AIML'],
+    required: true,
+    index: true
+  },
   category: { 
     type: String, 
     enum: ['Notes', 'Question Paper', 'Assignment'], 
