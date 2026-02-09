@@ -131,12 +131,6 @@ export const uploadMaterial = catchAsyncErrors(async (req, res, next) => {
     success: true,
     message: 'Material uploaded successfully',
     material,
-    compression: {
-      originalSize: formatFileSize(originalSize),
-      finalSize: formatFileSize(compressionResult.compressedSize),
-      compressionRatio: compressionResult.compressionRatio || 0,
-      compressed: compressionResult.compressed || false,
-    },
   });
 });
 

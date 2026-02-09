@@ -74,7 +74,7 @@ app.get('/api/health', async (req, res) => {
 });
 
 // Root
-app.get('/', (req, res) => res.send('Study App Backend API Running'));
+app.get('/', (req, res) => res.send('TCE Materials Backend API Running'));
 
 // Periodic cleanup of old temp files (every 30 minutes)
 setInterval(() => {
@@ -87,7 +87,7 @@ app.use(errorMiddleware);
 
 const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const server = app.listen(PORT, () => console.log(`TCE Materials Backend Server running on port ${PORT}`));
 
 // Unhandled Promise Rejection
 process.on("unhandledRejection", (err) => {
