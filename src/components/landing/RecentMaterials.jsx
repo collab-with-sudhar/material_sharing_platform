@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import MaterialCard from '../ui/MaterialCard';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+import { getMaterials } from '../../api/materialApi';
 
 const RecentMaterials = () => {
   const [materials, setMaterials] = useState([]);
@@ -17,48 +16,14 @@ const RecentMaterials = () => {
   const fetchRecentMaterials = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/api/materials?limit=6&page=1`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch materials');
-      }
-      
-      const data = await response.json();
-      
-      // Transform API data to match MaterialCard props
-      const transformedMaterials = data.materials?.map(material => ({
-        id: material._id,
-        title: material.title,
-        subject: material.subject,
-        type: material.category.toLowerCase(),
-        semester: material.classInfo,
-        year: new Date(material.createdAt).getFullYear().toString(),
-        views: material.views || 0,
-        downloads: material.downloads || 0,
-        date: formatDate(material.createdAt),
-        href: `/material/${material._id}`
-      })) || [];
-      
-      setMaterials(transformedMaterials);
+      const data = await getMaterials({ limit: 3, page: 1 });
+      setMaterials(data.materials || []);
     } catch (err) {
       console.error('Error fetching materials:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-    
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   if (loading) {
@@ -68,7 +33,7 @@ const RecentMaterials = () => {
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-medium mb-4">Recently Uploaded</h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Check out the latest materials shared by your peers
+              Check out the latest materials uploaded
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -142,8 +107,9 @@ const RecentMaterials = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {materials.map((material, index) => (
             <MaterialCard 
-              key={material.id} 
-              {...material} 
+              key={material._id} 
+              material={material}
+              showSave={false}
               delay={`${0.1 + (index * 0.1)}s`}
             />
           ))}

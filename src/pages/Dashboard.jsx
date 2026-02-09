@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import Navbar from '../components/layouts/Navbar';
 import { Upload, Eye, Download, FileText, Bookmark } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSavedMaterials, useMyUploads } from '../hooks/useMaterials';
-import { format } from 'date-fns';
+import MaterialCard from '../components/ui/MaterialCard';
 
 const StatCard = ({ label, value, icon: Icon, iconBgColor, delay }) => (
   <div 
@@ -20,57 +20,6 @@ const StatCard = ({ label, value, icon: Icon, iconBgColor, delay }) => (
     </div>
   </div>
 );
-
-const SavedMaterialItem = ({ material, onClick }) => {
-  const formattedDate = material.createdAt 
-    ? format(new Date(material.createdAt), 'MMM d, yyyy')
-    : 'N/A';
-
-  return (
-    <div 
-      className="border border-gray-200 p-4 bg-white hover:border-gray-400 transition-colors cursor-pointer"
-      onClick={onClick}
-    >
-      <div className="flex items-start gap-3">
-        <div className="w-12 h-12 border border-gray-200 flex items-center justify-center bg-gray-50">
-          <FileText className="w-5 h-5 text-gray-600" />
-        </div>
-        <div className="flex-1">
-          <h4 className="font-medium">{material.title}</h4>
-          <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
-            <Bookmark className="w-3 h-3" /> {material.subject}
-          </p>
-        </div>
-      </div>
-      {material.description && (
-        <p className="text-sm text-gray-600 mt-3 line-clamp-2">{material.description}</p>
-      )}
-      <div className="flex items-center gap-2 mt-3 flex-wrap">
-        <span className={`px-2 py-0.5 text-xs font-medium uppercase ${
-          material.category === 'Question Paper' ? 'bg-pink-100 text-pink-600' : 
-          material.category === 'Assignment' ? 'bg-purple-100 text-purple-600' : 
-          'bg-blue-100 text-blue-600'
-        }`}>
-          {material.category}
-        </span>
-        <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600">
-          {material.semester}
-        </span>
-      </div>
-      <div className="flex items-center justify-between mt-4 text-xs text-gray-500">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1">
-            <Eye className="w-3 h-3" /> {material.views || 0} views
-          </span>
-          <span className="flex items-center gap-1">
-            <Download className="w-3 h-3" /> {material.downloads || 0} downloads
-          </span>
-        </div>
-        <span>📅 {formattedDate}</span>
-      </div>
-    </div>
-  );
-};
 
 const Dashboard = () => {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -122,9 +71,6 @@ const Dashboard = () => {
     };
   }, [isAuthenticated, fetchSavedMaterials]);
 
-  const handleMaterialClick = (materialId) => {
-    navigate(`/material/${materialId}`);
-  };
 
   if (authLoading) {
     return (
@@ -212,10 +158,11 @@ const Dashboard = () => {
             ) : savedMaterials && savedMaterials.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
                 {savedMaterials.map((material) => (
-                  <SavedMaterialItem 
-                    key={material._id} 
+                  <MaterialCard
+                    key={material._id}
                     material={material}
-                    onClick={() => handleMaterialClick(material._id)}
+                    showSave={false}
+                    linkTo={`/material/${material._id}`}
                   />
                 ))}
               </div>

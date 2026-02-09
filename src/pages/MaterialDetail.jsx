@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -10,29 +10,31 @@ import {
   ExternalLink,
   Eye,
   User,
-  Calendar
+  Calendar,
+  Trash2
 } from 'lucide-react';
 import Navbar from '../components/layouts/Navbar';
 import { toast } from 'sonner';
 import { useMaterial } from '../hooks/useMaterials';
 import { useAuth } from '../context/AuthContext';
 import { format } from 'date-fns';
+import { deleteMaterial } from '../api/materialApi';
 
 const MaterialDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated, user, refreshUser } = useAuth();
   const { material, loading, toggleSave, trackDownload } = useMaterial(id);
-  const [isSaved, setIsSaved] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    // Check if material is saved by current user
+  const isSaved = useMemo(() => {
     if (user && material) {
       const savedMaterialIds = user.savedMaterials || [];
-      setIsSaved(savedMaterialIds.some(savedId => 
+      return savedMaterialIds.some(savedId => 
         savedId === material._id || savedId._id === material._id
-      ));
+      );
     }
+    return false;
   }, [user, material]);
 
   const handleDownload = async () => {
@@ -54,8 +56,7 @@ const MaterialDetail = () => {
     }
 
     try {
-      const newSavedState = await toggleSave();
-      setIsSaved(newSavedState);
+      await toggleSave();
       
       // Refresh user context to sync state across the app
       await refreshUser();
@@ -68,6 +69,25 @@ const MaterialDetail = () => {
     navigator.clipboard.writeText(window.location.href);
     toast.success('Link copied to clipboard!');
   };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this material? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteMaterial(id);
+      toast.success('Material deleted successfully');
+      navigate('/my-uploads');
+    } catch (error) {
+      console.error('Failed to delete material:', error);
+      toast.error(error.message || 'Failed to delete material');
+      setIsDeleting(false);
+    }
+  };
+
+  const isOwner = user && material && material.uploadedBy?._id === user._id;
 
   if (loading) {
     return (
@@ -108,7 +128,7 @@ const MaterialDetail = () => {
           {/* Back Link */}
           <Link 
             to="/browse" 
-            className="inline-flex items-center gap-2 text-sm font-medium mb-6 hover:text-pink-500 transition-colors animate-fade-in"
+            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-black mb-6 animate-fade-in transition-colors"
             style={{ animationDelay: '0.1s', animationFillMode: 'both' }}
           >
             <ArrowLeft className="w-4 h-4" />
@@ -160,6 +180,16 @@ const MaterialDetail = () => {
                     <Share2 className="w-4 h-4" />
                     Share
                   </button>
+                  {isOwner && (
+                    <button 
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      className="flex items-center gap-2 px-6 py-3 border border-red-500 text-red-500 font-medium uppercase text-sm hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      {isDeleting ? 'Deleting...' : 'Delete'}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -217,6 +247,12 @@ const MaterialDetail = () => {
                       <span className="text-sm text-gray-500">Subject</span>
                       <span className="text-sm font-medium">{material.subject}</span>
                     </div>
+                    {material.department && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-500">Department</span>
+                        <span className="text-sm font-medium">{material.department}</span>
+                      </div>
+                    )}
                     {material.tags && material.tags.length > 0 && (
                       <div>
                         <span className="text-sm text-gray-500 block mb-2">Tags</span>

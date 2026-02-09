@@ -1,12 +1,12 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-const CategoryCard = ({ icon: Icon, title, subtitle, href, delay }) => (
-  <div className="animate-fade-in" style={{ animationDelay: delay, animationFillMode: 'both' }}>
-    <a 
-      href={href || "#"}
-      className="group relative border border-black p-6 flex flex-col gap-4 hover:bg-black transition-colors duration-300 h-full"
-    >
+const CategoryCard = ({ icon: Icon, title, subtitle, href, delay }) => {
+  const isDummy = !href || href === '#';
+  
+  const cardContent = (
+    <>
       <div className="text-black group-hover:text-neon-pink transition-colors">
         <Icon className="w-8 h-8" />
       </div>
@@ -18,8 +18,25 @@ const CategoryCard = ({ icon: Icon, title, subtitle, href, delay }) => (
         <span>Browse</span>
         <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
       </div>
-    </a>
-  </div>
-);
+    </>
+  );
+
+  return (
+    <div className="animate-fade-in" style={{ animationDelay: delay, animationFillMode: 'both' }}>
+      {isDummy ? (
+        <div className="group relative border border-black p-6 flex flex-col gap-4 hover:bg-black transition-colors duration-300 h-full cursor-not-allowed opacity-60">
+          {cardContent}
+        </div>
+      ) : (
+        <Link 
+          to={href}
+          className="group relative border border-black p-6 flex flex-col gap-4 hover:bg-black transition-colors duration-300 h-full"
+        >
+          {cardContent}
+        </Link>
+      )}
+    </div>
+  );
+};
 
 export default CategoryCard;

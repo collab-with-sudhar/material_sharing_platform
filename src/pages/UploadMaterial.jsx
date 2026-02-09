@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/layouts/Navbar';
 import { UploadCloud, X, FileText, ChevronDown, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { uploadMaterial } from '../api/materialApi';
 import { useAuth } from '../context/AuthContext';
 
 // Custom Dropdown Component with animation
@@ -66,16 +65,18 @@ const CustomSelect = ({ label, required, value, onChange, options, placeholder }
 
 const UploadMaterial = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentStage, setCurrentStage] = useState(''); // 'uploading' | 'finalizing'
   const [formData, setFormData] = useState({
     title: '',
     category: '',
     subject: '',
     semester: '',
+    department: '',
     description: '',
     tags: ''
   });
@@ -121,8 +122,19 @@ const UploadMaterial = () => {
   };
 
   const validateAndSetFile = (selectedFile) => {
+    // Validate file exists
+    if (!selectedFile) {
+      toast.error('No file selected');
+      return;
+    }
+
     // Validate file type
-    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const allowedTypes = [
+      'application/pdf', 
+      'application/msword', 
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    
     if (!allowedTypes.includes(selectedFile.type)) {
       toast.error('Only PDF and Word documents are allowed');
       return;
@@ -135,14 +147,84 @@ const UploadMaterial = () => {
       return;
     }
 
+    // Validate minimum file size (1KB)
+    if (selectedFile.size < 1024) {
+      toast.error('File appears to be empty or corrupted');
+      return;
+    }
+
+    // Validate filename
+    if (!selectedFile.name || selectedFile.name.trim() === '') {
+      toast.error('Invalid filename');
+      return;
+    }
+
     setFile(selectedFile);
-    toast.success('File selected successfully');
+    toast.success(`Selected: ${selectedFile.name} (${formatFileSize(selectedFile.size)})`);
   };
 
   const removeFile = () => {
     setFile(null);
     const fileInput = document.getElementById('file-upload');
     if (fileInput) fileInput.value = '';
+  };
+
+
+
+  const uploadWithProgress = async (formData) => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+
+      // Track upload progress
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const progress = Math.round((e.loaded / e.total) * 100);
+          setUploadProgress(progress);
+        }
+      });
+
+      xhr.addEventListener('load', () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            resolve(response);
+          } catch {
+            reject(new Error('Invalid server response'));
+          }
+        } else {
+          try {
+            const error = JSON.parse(xhr.responseText);
+            reject(new Error(error.message || 'Upload failed'));
+          } catch {
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+          }
+        }
+      });
+
+      xhr.addEventListener('error', () => {
+        reject(new Error('Network error during upload. Please check your connection.'));
+      });
+
+      xhr.addEventListener('abort', () => {
+        reject(new Error('Upload cancelled'));
+      });
+
+      xhr.addEventListener('timeout', () => {
+        reject(new Error('Upload timed out. The file might be too large or server is busy.'));
+      });
+
+      // Configure request with cookies for authentication
+      const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000';
+      xhr.open('POST', `${API_BASE}/api/materials`);
+      
+      // CRITICAL: Enable credentials (cookies) for authentication
+      xhr.withCredentials = true;
+      
+      // Set timeout (5 minutes for large files)
+      xhr.timeout = 300000;
+      
+      xhr.send(formData);
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -153,13 +235,19 @@ const UploadMaterial = () => {
       return;
     }
 
-    if (!formData.title || !formData.subject || !formData.category || !formData.semester) {
+    if (!formData.title || !formData.subject || !formData.category || !formData.semester || !formData.department) {
       toast.error('Please fill in all required fields');
       return;
     }
 
     setUploading(true);
-    setUploadProgress(10);
+    setUploadProgress(0);
+    setCurrentStage('');
+
+    // Show info for PDF files that compression will happen server-side
+    if (file.type === 'application/pdf') {
+      toast.info('Uploading PDF (compression will be done server-side)...');
+    }
 
     try {
       // Create FormData
@@ -169,6 +257,7 @@ const UploadMaterial = () => {
       uploadFormData.append('subject', formData.subject.trim());
       uploadFormData.append('category', formData.category);
       uploadFormData.append('semester', formData.semester);
+      uploadFormData.append('department', formData.department);
       
       if (formData.description) {
         uploadFormData.append('description', formData.description.trim());
@@ -178,12 +267,13 @@ const UploadMaterial = () => {
         uploadFormData.append('tags', formData.tags);
       }
 
-      setUploadProgress(30);
+      setCurrentStage('uploading');
+      setUploadProgress(0);
 
-      // Upload
-      const response = await uploadMaterial(uploadFormData);
+      // Upload with real progress tracking
+      const response = await uploadWithProgress(uploadFormData);
 
-      setUploadProgress(100);
+      setCurrentStage('finalizing');
 
       if (response.success) {
         toast.success(
@@ -191,8 +281,12 @@ const UploadMaterial = () => {
             <p className="font-semibold">Material uploaded successfully!</p>
             {response.compression?.compressed && (
               <p className="text-xs mt-1">
-                Compressed from {response.compression.originalSize} to {response.compression.finalSize}
-                ({response.compression.compressionRatio}% reduction)
+                Compressed: {response.compression.originalSize} → {response.compression.finalSize} ({response.compression.compressionRatio}% reduction)
+              </p>
+            )}
+            {response.compression?.error && (
+              <p className="text-xs mt-1 text-amber-600">
+                Note: Compression unavailable, uploaded original file
               </p>
             )}
           </div>
@@ -204,6 +298,7 @@ const UploadMaterial = () => {
           category: '',
           subject: '',
           semester: '',
+          department: '',
           description: '',
           tags: ''
         });
@@ -216,8 +311,34 @@ const UploadMaterial = () => {
       }
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error(error.message || 'Failed to upload material');
+      
+      // Provide specific error messages based on error type
+      let errorMessage = 'Failed to upload material';
+      let shouldRedirect = false;
+      
+      if (error.message.includes('Login') || error.message.includes('auth') || error.message.includes('Unauthorized')) {
+        errorMessage = 'Session expired. Please sign in again.';
+        shouldRedirect = true;
+      } else if (error.message.includes('Network') || error.message.includes('network')) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (error.message.includes('timeout') || error.message.includes('timed out')) {
+        errorMessage = 'Upload timed out. Please try again or use a smaller file.';
+      } else if (error.message.includes('exceed') || error.message.includes('large')) {
+        errorMessage = 'File is too large. Maximum size is 100MB.';
+      } else if (error.message.includes('format') || error.message.includes('type')) {
+        errorMessage = 'Invalid file format. Only PDF and Word documents are allowed.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
+      
+      if (shouldRedirect) {
+        setTimeout(() => navigate('/signin'), 2000);
+      }
+      
       setUploadProgress(0);
+      setCurrentStage('');
     } finally {
       setUploading(false);
     }
@@ -241,7 +362,7 @@ const UploadMaterial = () => {
           {/* Page Title */}
           <div className="mb-8 animate-fade-in" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>
             <h1 className="text-3xl md:text-4xl font-medium">Upload Material</h1>
-            <p className="text-gray-500 mt-2">Share your study materials with the community</p>
+            <p className="text-gray-500 mt-2">Share your Handwritten Notes and other study materials.</p>
           </div>
 
           {/* Upload Form Card */}
@@ -281,6 +402,27 @@ const UploadMaterial = () => {
                   />
                 </div>
 
+                {/* Department */}
+                <CustomSelect
+                  label="Department"
+                  required
+                  value={formData.department}
+                  onChange={handleInputChange}
+                  placeholder="Select department"
+                  options={[
+                    { value: 'IT', label: 'IT', name: 'department' },
+                    { value: 'CSE', label: 'CSE', name: 'department' },
+                    { value: 'EEE', label: 'EEE', name: 'department' },
+                    { value: 'ECE', label: 'ECE', name: 'department' },
+                    { value: 'CIVIL', label: 'CIVIL', name: 'department' },
+                    { value: 'MECH', label: 'MECH', name: 'department' },
+                    { value: 'CSBS', label: 'CSBS', name: 'department' },
+                    { value: 'ARCH', label: 'ARCH', name: 'department' },
+                    { value: 'DATA SCIENCE', label: 'DATA SCIENCE', name: 'department' },
+                    { value: 'AIML', label: 'AIML', name: 'department' },
+                  ]}
+                />
+
                 {/* Subject & Tags Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -304,7 +446,7 @@ const UploadMaterial = () => {
                       name="tags"
                       value={formData.tags}
                       onChange={handleInputChange}
-                      placeholder="e.g., arrays, sorting"
+                      placeholder="e.g., arrays, sorting(seperated by commas)"
                       className="w-full h-12 px-4 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-100 placeholder:text-gray-400 transition-all bg-white hover:border-gray-300"
                     />
                   </div>
@@ -320,7 +462,7 @@ const UploadMaterial = () => {
                     name="title"
                     value={formData.title}
                     onChange={handleInputChange}
-                    placeholder="e.g., Data Structures Mid-Term 2024"
+                    placeholder="e.g., Data Structures Module 1 Notes"
                     className="w-full h-12 px-4 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-100 placeholder:text-gray-400 transition-all bg-white hover:border-gray-300"
                     required
                   />
@@ -333,7 +475,7 @@ const UploadMaterial = () => {
                     name="description"
                     value={formData.description}
                     onChange={handleInputChange}
-                    placeholder="Add a brief description about this material..."
+                    placeholder="Add a description about this material..."
                     rows={3}
                     className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-gray-400 focus:ring-2 focus:ring-gray-100 placeholder:text-gray-400 transition-all bg-white resize-none hover:border-gray-300"
                   />
@@ -367,7 +509,7 @@ const UploadMaterial = () => {
                     </div>
                     <p className="font-medium text-sm text-gray-700">Click to upload or drag and drop</p>
                     <p className="text-xs text-gray-500 mt-2">PDF or DOCX (max. 100MB)</p>
-                    <p className="text-xs text-gray-400 mt-1">Files will be automatically compressed to save space</p>
+                    <p className="text-xs text-gray-400 mt-1">PDFs will be automatically compressed on the server</p>
                   </div>
                 </div>
 
@@ -402,23 +544,44 @@ const UploadMaterial = () => {
 
                 {/* Upload Progress */}
                 {uploading && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Uploading...</span>
-                      <span className="text-gray-600 font-medium">{uploadProgress}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                      <div 
-                        className="bg-blue-500 h-2 transition-all duration-300 ease-out"
-                        style={{ width: `${uploadProgress}%` }}
-                      ></div>
-                    </div>
-                    <p className="text-xs text-gray-500 text-center">
-                      {uploadProgress < 30 ? 'Preparing file...' : 
-                       uploadProgress < 60 ? 'Compressing and uploading...' : 
-                       uploadProgress < 100 ? 'Finalizing...' : 
-                       'Upload complete!'}
-                    </p>
+                  <div className="space-y-4">
+                    {/* Upload Progress */}
+                    {currentStage === 'uploading' && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-700 font-medium">Uploading...</span>
+                          <span className="text-gray-600 font-medium">{uploadProgress}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                          <div 
+                            className="bg-gradient-to-r from-blue-500 to-blue-600 h-2.5 transition-all duration-300 ease-out"
+                            style={{ width: `${uploadProgress}%` }}
+                          ></div>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          {uploadProgress < 30 ? 'Uploading file to server...' :
+                           uploadProgress < 70 ? 'Compressing and processing...' :
+                           uploadProgress < 100 ? 'Saving to cloud storage...' : 
+                           'Upload complete!'}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Finalizing */}
+                    {currentStage === 'finalizing' && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-700 font-medium">Finalizing...</span>
+                          <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                          <div className="bg-gradient-to-r from-green-500 to-green-600 h-2.5 w-full animate-pulse"></div>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          Creating database entry and updating metadata...
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 

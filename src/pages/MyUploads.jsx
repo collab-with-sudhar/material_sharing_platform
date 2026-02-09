@@ -1,96 +1,12 @@
 import React from 'react';
 import Navbar from '../components/layouts/Navbar';
-import Footer from '../components/layouts/Footer';
-import { ArrowLeft, Upload, FileText, Bookmark, Eye, Download, Calendar } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Upload, FileText } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useMyUploads } from '../hooks/useMaterials';
-import { format } from 'date-fns';
-
-const MaterialCard = ({ material, onClick }) => {
-  const getCategoryStyle = (cat) => {
-    switch (cat?.toLowerCase()) {
-      case 'question paper':
-        return 'bg-pink-100 text-pink-600 border-pink-200';
-      case 'notes':
-        return 'bg-blue-100 text-blue-600 border-blue-200';
-      case 'lab manual':
-        return 'bg-green-100 text-green-600 border-green-200';
-      case 'assignment':
-        return 'bg-yellow-100 text-yellow-600 border-yellow-200';
-      default:
-        return 'bg-gray-100 text-gray-600 border-gray-200';
-    }
-  };
-
-  const formattedDate = material.createdAt 
-    ? format(new Date(material.createdAt), 'MMM d, yyyy')
-    : 'N/A';
-
-  return (
-    <div 
-      onClick={onClick}
-      className="border border-gray-200 bg-white hover:shadow-md transition-shadow cursor-pointer"
-    >
-      {/* Header */}
-      <div className="p-4 pb-3">
-        <div className="flex items-start gap-3">
-          <div className="w-12 h-12 border border-gray-200 flex items-center justify-center bg-gray-50 shrink-0">
-            <FileText className="w-5 h-5 text-gray-500" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-base truncate">{material.title}</h3>
-            <p className="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
-              <Bookmark className="w-3 h-3" /> {material.subject}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Description */}
-      {material.description && (
-        <div className="px-4 pb-3">
-          <p className="text-sm text-gray-600 line-clamp-2">{material.description}</p>
-        </div>
-      )}
-
-      {/* Tags */}
-      <div className="px-4 pb-3 flex flex-wrap items-center gap-2">
-        <span className={`px-2 py-0.5 text-[10px] font-semibold uppercase border ${getCategoryStyle(material.category)}`}>
-          {material.category}
-        </span>
-        <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 border border-gray-200">
-          Sem {material.semester || 'N/A'}
-        </span>
-        <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 border border-gray-200">
-          {material.year || new Date().getFullYear()}
-        </span>
-      </div>
-
-      {/* Footer Stats */}
-      <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1">
-            <Eye className="w-3.5 h-3.5" /> {material.views || 0}
-          </span>
-          <span className="flex items-center gap-1">
-            <Download className="w-3.5 h-3.5" /> {material.downloads || 0}
-          </span>
-        </div>
-        <span className="flex items-center gap-1">
-          <Calendar className="w-3.5 h-3.5" /> {formattedDate}
-        </span>
-      </div>
-    </div>
-  );
-};
+import MaterialCard from '../components/ui/MaterialCard';
 
 const MyUploads = () => {
-  const navigate = useNavigate();
   const { uploads, loading, error } = useMyUploads();
-
-  const handleMaterialClick = (materialId) => {
-    navigate(`/material/${materialId}`);
-  };
 
   return (
     <div className="min-h-screen bg-white font-sans text-black overflow-x-hidden">
@@ -148,7 +64,8 @@ const MyUploads = () => {
               <MaterialCard 
                 key={upload._id} 
                 material={upload}
-                onClick={() => handleMaterialClick(upload._id)}
+                showSave={false}
+                linkTo={`/material/${upload._id}`}
               />
             ))}
           </div>

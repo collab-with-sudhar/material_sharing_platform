@@ -12,18 +12,18 @@ export const NAV_LINKS = [
 ];
 
 export const FEATURE_CARDS = [
-  { icon: Search, title: "Browse Materials", subtitle: "Find study resources", href: "/browse" },
+  { icon: Search, title: "Browse Materials", subtitle: "Find study Materials", href: "/browse" },
   { icon: Upload, title: "Upload Notes", subtitle: "Share your notes", href: "/upload" },
   { icon: Bookmark, title: "My Dashboard", subtitle: "Saved materials", href: "/dashboard" },
 ];
 
 export const CATEGORIES = [
-  { id: 1, icon: ClipboardList, title: "Assignments", subtitle: "Assignment solutions and references" },
-  { id: 2, icon: FileText, title: "Handwritten Notes", subtitle: "Class notes and study materials" },
-  { id: 3, icon: FlaskConical, title: "Lab Manuals", subtitle: "Laboratory practical manuals" },
-  { id: 4, icon: FolderOpen, title: "Other", subtitle: "Miscellaneous study materials" },
-  { id: 5, icon: FileQuestion, title: "Question Papers", subtitle: "Previous year examination papers" },
-  { id: 6, icon: BookOpen, title: "Reference Books", subtitle: "Digital reference materials" },
+  { id: 1, icon: ClipboardList, title: "Assignments", subtitle: "Assignment solutions", href: "/browse?category=Assignment" },
+  { id: 2, icon: FileText, title: "Handwritten Notes", subtitle: "Class notes and study materials", href: "/browse?category=Notes" },
+  { id: 3, icon: FlaskConical, title: "Lab Manuals", subtitle: "Laboratory practical manuals", href: "#" },
+  { id: 4, icon: FolderOpen, title: "Other", subtitle: "Miscellaneous study materials", href: "#" },
+  { id: 5, icon: FileQuestion, title: "Question Papers", subtitle: "Previous year examination papers", href: "/browse?category=Question Paper" },
+  { id: 6, icon: BookOpen, title: "Reference Books", subtitle: "Digital reference materials", href: "#" },
 ];
 
 export const MATERIALS = [

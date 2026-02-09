@@ -4,14 +4,21 @@ import { useMaterials } from '../../hooks/useMaterials';
 import { useAuth } from '../../context/AuthContext';
 import { FileText } from 'lucide-react';
 
-const BrowseGrid = () => {
+const BrowseGrid = ({ filters }) => {
   const { materials, loading, error, fetchMaterials } = useMaterials();
   const { user, refreshUser } = useAuth();
   const [localSavedMaterials, setLocalSavedMaterials] = useState([]);
 
   useEffect(() => {
-    fetchMaterials();
-  }, [fetchMaterials]);
+    // Build query params from filters
+    const params = {};
+    if (filters?.category) params.category = filters.category;
+    if (filters?.department) params.department = filters.department;
+    if (filters?.semester) params.semester = filters.semester;
+    if (filters?.search) params.search = filters.search;
+    
+    fetchMaterials(params);
+  }, [filters, fetchMaterials]);
 
   useEffect(() => {
     if (user?.savedMaterials) {
