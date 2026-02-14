@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-dotenv.config();
+
 
 import express from 'express';
 import cors from 'cors';
@@ -14,7 +14,9 @@ process.on("uncaughtException", (err) => {
   console.log(`Shutting down the server due to Uncaught Exception`);
   process.exit(1);
 });
-
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 // Connect to Database
 connectDB();
 
