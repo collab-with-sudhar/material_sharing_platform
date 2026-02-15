@@ -141,7 +141,7 @@ const SignUp = () => {
             </div>
 
             {/* Google Sign Up Button */}
-            {/* <div className="flex justify-center">
+             <div className="flex justify-center">
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
                 onError={handleGoogleError}
@@ -151,7 +151,7 @@ const SignUp = () => {
                 shape="rectangular"
                 width={350}
               />
-            </div> */}
+            </div> 
             
             <div className="mt-8 text-center">
               <Link to="/login" className="text-neon-pink hover:text-pink-400 transition-colors">
