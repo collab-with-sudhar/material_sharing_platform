@@ -71,6 +71,10 @@ const UploadMaterial = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentStage, setCurrentStage] = useState(''); // 'uploading' | 'finalizing'
+  const [uploadSpeed, setUploadSpeed] = useState(0); // bytes per second
+  const [uploadEta, setUploadEta] = useState(null); // seconds remaining
+  const [retryCount, setRetryCount] = useState(0);
+  const xhrRef = useRef(null);
   const [formData, setFormData] = useState({
     title: '',
     category: '',
@@ -179,19 +183,44 @@ const UploadMaterial = () => {
 
 
 
-  const uploadWithProgress = async (formData) => {
+  const uploadWithProgress = async (formData, attempt = 1) => {
+    const MAX_RETRIES = 3;
+    
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
+      xhrRef.current = xhr;
+      
+      let startTime = Date.now();
+      let lastLoaded = 0;
+      let lastTime = startTime;
 
-      // Track upload progress
+      // Track upload progress with speed and ETA
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable) {
           const progress = Math.round((e.loaded / e.total) * 100);
           setUploadProgress(progress);
+          
+          // Calculate speed and ETA
+          const now = Date.now();
+          const timeDiff = (now - lastTime) / 1000; // seconds
+          if (timeDiff >= 0.5) { // Update every 500ms
+            const bytesDiff = e.loaded - lastLoaded;
+            const speed = bytesDiff / timeDiff; // bytes/sec
+            setUploadSpeed(speed);
+            
+            const remaining = e.total - e.loaded;
+            if (speed > 0) {
+              setUploadEta(Math.ceil(remaining / speed));
+            }
+            
+            lastLoaded = e.loaded;
+            lastTime = now;
+          }
         }
       });
 
       xhr.addEventListener('load', () => {
+        xhrRef.current = null;
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             const response = JSON.parse(xhr.responseText);
@@ -209,16 +238,31 @@ const UploadMaterial = () => {
         }
       });
 
+      const handleRetryableError = (errorMsg) => {
+        xhrRef.current = null;
+        if (attempt < MAX_RETRIES) {
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 8000); // 1s, 2s, 4s
+          setRetryCount(attempt);
+          toast.info(`Upload interrupted. Retrying in ${delay / 1000}s... (attempt ${attempt + 1}/${MAX_RETRIES})`);
+          setTimeout(() => {
+            uploadWithProgress(formData, attempt + 1).then(resolve).catch(reject);
+          }, delay);
+        } else {
+          reject(new Error(errorMsg));
+        }
+      };
+
       xhr.addEventListener('error', () => {
-        reject(new Error('Network error during upload. Please check your connection.'));
+        handleRetryableError('Network error during upload. Please check your connection.');
       });
 
       xhr.addEventListener('abort', () => {
+        xhrRef.current = null;
         reject(new Error('Upload cancelled'));
       });
 
       xhr.addEventListener('timeout', () => {
-        reject(new Error('Upload timed out. The file might be too large or server is busy.'));
+        handleRetryableError('Upload timed out. Retrying with extended timeout...');
       });
 
       // Configure request with cookies for authentication
@@ -228,8 +272,12 @@ const UploadMaterial = () => {
       // CRITICAL: Enable credentials (cookies) for authentication
       xhr.withCredentials = true;
       
-      // Set timeout (5 minutes for large files)
-      xhr.timeout = 300000;
+      // Adaptive timeout: base 2min + 1min per 10MB, capped at 15min
+      const fileSizeMB = formData.get('file')?.size || 0;
+      const baseTimeout = 120000; // 2 minutes base
+      const sizeTimeout = Math.ceil((fileSizeMB / (10 * 1024 * 1024))) * 60000; // 1min per 10MB
+      const retryMultiplier = attempt; // Increase timeout on retries
+      xhr.timeout = Math.min((baseTimeout + sizeTimeout) * retryMultiplier, 900000); // cap 15min
       
       xhr.send(formData);
     });
@@ -251,6 +299,9 @@ const UploadMaterial = () => {
     setUploading(true);
     setUploadProgress(0);
     setCurrentStage('');
+    setUploadSpeed(0);
+    setUploadEta(null);
+    setRetryCount(0);
 
     // Show info for PDF files that compression will happen server-side
     if (file.type === 'application/pdf') {
@@ -347,8 +398,12 @@ const UploadMaterial = () => {
       
       setUploadProgress(0);
       setCurrentStage('');
+      setUploadSpeed(0);
+      setUploadEta(null);
+      setRetryCount(0);
     } finally {
       setUploading(false);
+      xhrRef.current = null;
     }
   };
 
@@ -557,7 +612,9 @@ const UploadMaterial = () => {
                     {currentStage === 'uploading' && (
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-700 font-medium">Uploading...</span>
+                          <span className="text-gray-700 font-medium">
+                            {retryCount > 0 ? `Uploading (retry ${retryCount})...` : 'Uploading...'}
+                          </span>
                           <span className="text-gray-600 font-medium">{uploadProgress}%</span>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
@@ -566,12 +623,28 @@ const UploadMaterial = () => {
                             style={{ width: `${uploadProgress}%` }}
                           ></div>
                         </div>
-                        <p className="text-xs text-gray-500">
-                          {uploadProgress < 30 ? 'Uploading file to server...' :
-                           uploadProgress < 70 ? 'Compressing and processing...' :
-                           uploadProgress < 100 ? 'Saving to cloud storage...' : 
-                           'Upload complete!'}
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-gray-500">
+                            {uploadProgress < 30 ? 'Uploading file to server...' :
+                             uploadProgress < 70 ? 'Compressing and processing...' :
+                             uploadProgress < 100 ? 'Saving to cloud storage...' : 
+                             'Upload complete!'}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {uploadSpeed > 0 && uploadProgress < 100 && (
+                              <>
+                                {uploadSpeed >= 1024 * 1024 
+                                  ? `${(uploadSpeed / (1024 * 1024)).toFixed(1)} MB/s`
+                                  : `${(uploadSpeed / 1024).toFixed(0)} KB/s`}
+                                {uploadEta != null && uploadEta > 0 && (
+                                  <> · {uploadEta >= 60 
+                                    ? `${Math.floor(uploadEta / 60)}m ${uploadEta % 60}s left`
+                                    : `${uploadEta}s left`}</>
+                                )}
+                              </>
+                            )}
+                          </p>
+                        </div>
                       </div>
                     )}
 

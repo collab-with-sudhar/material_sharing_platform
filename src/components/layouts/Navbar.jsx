@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../context/AuthContext';
 import NavButton from '../ui/NavButton';
 import { X } from 'lucide-react';
 
@@ -116,18 +116,18 @@ const Navbar = () => {
             ) : (
               <>
                 <Link 
-                  to="/upload" 
+                  to="/login" 
                   onClick={closeMobileMenu} 
                   className="flex-1 flex items-center justify-center border-b border-gray-200 text-lg font-semibold uppercase tracking-wider hover:bg-gray-50 transition-colors"
                 >
-                  UPLOAD
+                  SIGN IN
                 </Link>
                 <Link 
-                  to="/login" 
+                  to="/signup" 
                   onClick={closeMobileMenu} 
                   className="flex-1 flex items-center justify-center text-lg font-semibold uppercase tracking-wider hover:bg-gray-50 transition-colors"
                 >
-                  SIGN IN
+                  SIGN UP
                 </Link>
               </>
             )}
