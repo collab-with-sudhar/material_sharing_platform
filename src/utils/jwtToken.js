@@ -9,7 +9,7 @@ const sendToken = (user, statusCode, res) => {
     ),
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env.NODE_ENV === "production"? true : false,
   };
 
   res.status(statusCode)
