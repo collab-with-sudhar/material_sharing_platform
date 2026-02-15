@@ -4,12 +4,17 @@ import { ArrowLeft, Upload, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useMyUploads } from '../hooks/useMaterials';
 import MaterialCard from '../components/ui/MaterialCard';
-
+import { Helmet } from 'react-helmet-async';
 const MyUploads = () => {
   const { uploads, loading, error } = useMyUploads();
 
   return (
     <div className="min-h-screen bg-white font-sans text-black overflow-x-hidden">
+      <Helmet>
+        <title>My Uploads - TCE Materials</title>
+        <meta name="description" content="View and manage your uploaded materials for Thiagarajar College of Engineering." />
+        <link rel="canonical" href="https://tcematerials.tech/my-uploads" />
+      </Helmet>
       <Navbar />
       
       {/* Spacer for fixed navbar */}

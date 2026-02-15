@@ -19,7 +19,7 @@ import { useMaterial } from '../hooks/useMaterials';
 import { useAuth } from '../context/AuthContext';
 import { format } from 'date-fns';
 import { deleteMaterial } from '../api/materialApi';
-
+import { Helmet } from 'react-helmet-async';
 const MaterialDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -121,6 +121,12 @@ const MaterialDetail = () => {
 
   return (
     <div className="min-h-screen bg-white font-sans">
+      <Helmet>
+        <title>{material.title} - TCE Materials</title>
+        <meta name="description" content={`Download and explore ${material.title}, a handwritten note, question paper, or assignment for Thiagarajar College of Engineering students.`} />
+        <link rel="canonical" href={`https://tcematerials.tech/materials/${material._id}`} />
+      </Helmet>
+      
       <Navbar />
       
       <section className="pt-32 md:pt-40 pb-16 px-4 md:px-8">

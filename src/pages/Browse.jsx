@@ -6,7 +6,7 @@ import Footer from '../components/layouts/Footer';
 import BrowseHeader from '../components/browse/BrowseHeader';
 import BrowseFilters from '../components/browse/BrowseFilters';
 import BrowseGrid from '../components/browse/BrowseGrid';
-
+import { Helmet } from 'react-helmet-async';
 const Browse = () => {
   const [searchParams] = useSearchParams();
   const [showFilters, setShowFilters] = useState(false);
@@ -70,7 +70,13 @@ const Browse = () => {
 
   return (
     <div className="min-h-screen bg-white font-sans text-black">
+      <Helmet>
+        <title>Browse Materials Question papers and Assignments</title>
+        <meta name="description" content="Browse and download handwritten notes, question papers, and assignments for Thiagarajar College of Engineering students" />
+        <link rel="canonical" href="https://tcematerials.tech/browse" />
+      </Helmet>
       <Navbar />
+      
       
       {/* Department Selection Modal */}
       {showDepartmentModal && (

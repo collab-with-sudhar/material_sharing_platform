@@ -4,7 +4,7 @@ import Navbar from '../components/layouts/Navbar';
 import { UploadCloud, X, FileText, ChevronDown, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
-
+import { Helmet } from 'react-helmet-async';
 // Custom Dropdown Component with animation
 const CustomSelect = ({ label, required, value, onChange, options, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -360,6 +360,11 @@ const UploadMaterial = () => {
 
   return (
     <div className="min-h-screen bg-white font-sans text-black overflow-x-hidden">
+      <Helmet>
+        <title>Upload Material - TCE Materials</title>
+        <meta name="description" content="Upload your handwritten notes, question papers, and assignments for Thiagarajar College of Engineering students." />
+        <link rel="canonical" href="https://tcematerials.tech/upload" />
+      </Helmet>
       <Navbar />
       
       {/* Spacer for fixed navbar */}

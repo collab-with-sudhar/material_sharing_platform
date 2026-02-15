@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { GoogleLogin } from '@react-oauth/google';
 import Navbar from '../components/layouts/Navbar';
 import { X, Loader2 } from 'lucide-react';
-
+import { Helmet } from 'react-helmet-async';
 const SignIn = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -61,6 +61,12 @@ const SignIn = () => {
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] flex flex-col">
+      <Helmet>
+        <title>TCE Materials - Log in</title>
+        <meta name="description" content="Sign in to access your TCE Materials account and download handwritten notes, question papers, and assignments." />
+        <link rel="canonical" href="https://tcematerials.tech/signin" />
+      </Helmet>
+      
       <Navbar />
       
       {/* Close button - top right */}

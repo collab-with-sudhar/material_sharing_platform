@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSavedMaterials, useMyUploads } from '../hooks/useMaterials';
 import MaterialCard from '../components/ui/MaterialCard';
-
+import { Helmet } from 'react-helmet-async';
 const StatCard = ({ label, value, icon: Icon, iconBgColor, delay }) => (
   <div 
     className="border border-gray-200 p-6 bg-white flex items-center gap-4 animate-fade-in" 
@@ -85,6 +85,12 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-white font-sans text-black overflow-x-hidden">
+      <Helmet>
+        <title>Dashboard - TCE Materials</title>
+        <meta name="description" content="User dashboard for managing saved materials and tracking uploads." />
+        <link rel="canonical" href="https://tcematerials.tech/dashboard" />
+      </Helmet>
+      
       <Navbar />
       
       {/* Spacer for fixed navbar */}

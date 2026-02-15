@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { GoogleLogin } from '@react-oauth/google';
 import Navbar from '../components/layouts/Navbar';
 import { X, Loader2 } from 'lucide-react';
-
+import { Helmet } from 'react-helmet-async';
 const SignUp = () => {
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,6 +60,12 @@ const SignUp = () => {
 
   return (
     <div className="min-h-screen bg-[#1a1a1a] flex flex-col">
+      <Helmet>
+        <title>TCE Materials - Register</title>
+        <meta name="description" content="Create an account to upload and download handwritten notes, question papers, and assignments for Thiagarajar College of Engineering students." />
+        <link rel="canonical" href="https://tcematerials.tech/signup" />
+      </Helmet>
+      
       <Navbar />
       
       {/* Close button - top right */}
