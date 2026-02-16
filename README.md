@@ -1,14 +1,14 @@
 # Material Sharing Platform
 
 ## Project Overview
-The Material Sharing Platform is an innovative solution designed to facilitate the sharing of educational materials among students and educators. This platform aims to streamline the process of finding, accessing, and collaborating on a variety of educational resources.
+The Material Sharing Platform is an innovative solution designed to facilitate the sharing of educational materials such as Handwritten notes,Question papers and assignments among students. This platform aims to streamline the process of finding, accessing, and collaborating on a variety of educational resources.
 
 ## Setup Instructions
 
 ### Prerequisites
-- Node.js (version 14 or newer)
-- npm (Node Package Manager)
-- MongoDB (for database management)
+- Node.js
+- npm
+- MongoDB
 
 ### Installation
 1. Clone the repository:
@@ -22,11 +22,11 @@ The Material Sharing Platform is an innovative solution designed to facilitate t
    npm install
    ```
 
-3. Set up environment variables in a `.env` file. A sample `.env.example` file is included in the repository to guide you.
+3. Set up environment variables in a `.env` file.
 
 4. Start the application:
    ```bash
-   npm start
+   npm run dev
    ``` 
 
 ### Structure of the Project
